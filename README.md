@@ -43,12 +43,25 @@ npm start
 
 ## Meta(Instagram/Threads) 연동 절차
 
-1. 인스타그램 계정을 **프로페셔널(비즈니스/크리에이터)** 로 전환하고 Facebook 페이지에 연결
-2. [Meta for Developers](https://developers.facebook.com)에서 앱 생성 → **Instagram Graph API** 추가
-3. 권한: `instagram_basic`, `instagram_content_publish` → Graph API 탐색기에서 장기 토큰 발급
-4. `GET /me/accounts` → 페이지 ID → `GET /{page-id}?fields=instagram_business_account` 으로 **IG_USER_ID** 확인
-5. Threads: 같은 앱에 **Threads API** 추가, 권한 `threads_basic`, `threads_content_publish` → 토큰 발급
-6. `.env`에 입력 후 서버 재시작
+**Instagram — "Instagram 로그인이 포함된 API" 방식 사용 (Facebook 페이지 연결 불필요)**
+
+1. 인스타그램 계정을 **프로페셔널(비즈니스/크리에이터)** 로 전환
+2. https://developers.facebook.com/apps/ 에서 "비즈니스" 유형 앱 생성
+3. 제품 추가 → **"Instagram API"** ("Instagram 로그인이 포함된 API" 이용 사례)
+4. 권한 및 기능에서 `instagram_business_basic`, `instagram_business_content_publish` 추가
+5. 앱 역할 → 테스터 탭에서 본인 Instagram 계정을 테스터로 추가 → Instagram 앱에서 초대 수락
+6. 이용 사례 화면의 "액세스 토큰 생성" → 계정 추가 → Instagram 계정으로 로그인 → 토큰 생성
+7. 발급된 토큰으로 `GET https://graph.instagram.com/v21.0/me?fields=id,username&access_token=...` 호출해 반환되는 **`id`** 값을 IG_USER_ID로 사용 (개발자 콘솔 화면에 표시된 ID와 다를 수 있음 — 반드시 API 응답값 사용)
+8. API 베이스 URL은 `graph.facebook.com`이 아니라 **`graph.instagram.com`** — `src/publisher/instagram.js`에 이미 반영됨
+
+**Threads**
+
+1. 같은 앱에 제품 추가 → **Threads API**
+2. 권한 및 기능에서 `threads_basic`(자동 추가됨), `threads_content_publish` 추가
+3. Threads API 액세스 화면에서 토큰 발급 (Instagram과 유사한 흐름)
+4. `.env`에 THREADS_USER_ID / THREADS_ACCESS_TOKEN 입력
+
+입력 후 서버 재시작.
 
 ## 테스트
 

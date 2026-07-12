@@ -1,6 +1,8 @@
 import { config } from '../config.js';
 
-const G = 'https://graph.facebook.com/v21.0';
+// Instagram API with Instagram Login (graph.instagram.com) — Facebook 페이지 연결 없이
+// Instagram 계정으로 직접 발급받은 토큰을 사용하는 최신 방식.
+const G = 'https://graph.instagram.com/v21.0';
 
 async function call(fetchFn, url, step) {
   const res = await fetchFn(url, { method: 'POST' });
