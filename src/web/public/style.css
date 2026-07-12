@@ -1,0 +1,88 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+  background: #0f1419; color: #e6e9ec; min-height: 100vh;
+}
+header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 24px; background: #16202a; border-bottom: 1px solid #263340;
+  position: sticky; top: 0; z-index: 10; flex-wrap: wrap; gap: 12px;
+}
+header h1 { font-size: 20px; }
+nav { display: flex; gap: 8px; }
+.tab {
+  background: none; border: 1px solid #36455566; color: #9fb0c0;
+  padding: 8px 18px; border-radius: 20px; cursor: pointer; font-size: 14px;
+}
+.tab.active { background: #1d9bf0; border-color: #1d9bf0; color: #fff; }
+main { padding: 24px; max-width: 1100px; margin: 0 auto; }
+.toolbar { display: flex; gap: 10px; margin: 14px 0; flex-wrap: wrap; align-items: center; }
+button {
+  background: #263340; color: #e6e9ec; border: none; padding: 10px 16px;
+  border-radius: 8px; cursor: pointer; font-size: 14px; font-family: inherit;
+}
+button:hover:not(:disabled) { filter: brightness(1.2); }
+button:disabled { opacity: .4; cursor: not-allowed; }
+button.primary { background: #1d9bf0; color: #fff; }
+button.danger { background: #e0245e; color: #fff; }
+select, input, textarea {
+  background: #16202a; color: #e6e9ec; border: 1px solid #36455566;
+  padding: 10px 12px; border-radius: 8px; font-size: 14px; font-family: inherit;
+  width: 100%;
+}
+select { width: auto; }
+details {
+  background: #16202a; border: 1px solid #26334066; border-radius: 12px;
+  padding: 14px; margin-bottom: 14px;
+}
+details summary { cursor: pointer; font-weight: 600; }
+details input, details textarea { margin-top: 10px; }
+details button { margin-top: 10px; }
+.card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+.src-card, .draft-card {
+  background: #16202a; border: 1px solid #26334066; border-radius: 12px;
+  padding: 14px; display: flex; flex-direction: column; gap: 8px;
+}
+.src-card.selected { border-color: #1d9bf0; background: #1d9bf01a; }
+.src-card { cursor: pointer; }
+.src-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.badge {
+  font-size: 11px; padding: 3px 10px; border-radius: 10px; background: #263340;
+  color: #9fb0c0; white-space: nowrap;
+}
+.badge.news { background: #1d9bf033; color: #6cc5ff; }
+.badge.realestate { background: #17bf6333; color: #4be08d; }
+.badge.stock { background: #f4a52633; color: #ffc766; }
+.badge.manual { background: #794bc433; color: #b78aff; }
+.badge.st-draft { background: #79544233; color: #d0a080; }
+.badge.st-text_approved { background: #1d9bf033; color: #6cc5ff; }
+.badge.st-images_ready { background: #f4a52633; color: #ffc766; }
+.badge.st-published { background: #17bf6333; color: #4be08d; }
+.src-title { font-weight: 600; line-height: 1.4; word-break: keep-all; }
+.src-summary { font-size: 13px; color: #9fb0c0; line-height: 1.5; max-height: 60px; overflow: hidden; }
+.src-meta { font-size: 12px; color: #5c6b7a; }
+.draft-card { cursor: pointer; }
+#draft-detail h2 { font-size: 16px; margin: 20px 0 8px; color: #9fb0c0; }
+.card-editor {
+  background: #16202a; border: 1px solid #26334066; border-radius: 12px;
+  padding: 12px; margin-bottom: 10px; display: grid; gap: 8px;
+}
+.card-editor label { font-size: 12px; color: #5c6b7a; }
+.carousel { display: flex; gap: 12px; overflow-x: auto; padding: 10px 0; }
+.carousel img {
+  width: 270px; height: 337px; border-radius: 10px; flex-shrink: 0;
+  border: 1px solid #263340;
+}
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 10px; border-bottom: 1px solid #26334066; font-size: 14px; }
+a { color: #1d9bf0; }
+#draft-status { margin: 10px 0; }
+#publish-result { margin: 14px 0; line-height: 1.8; }
+#toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  background: #1d9bf0; color: #fff; padding: 12px 24px; border-radius: 10px;
+  z-index: 100; box-shadow: 0 4px 20px #0008;
+}
+#toast.error { background: #e0245e; }
+.spinner { display: inline-block; animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
