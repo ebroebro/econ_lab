@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>경제 콘텐츠 파이프라인</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <h1>📊 경제 콘텐츠 파이프라인</h1>
+  <nav>
+    <button data-tab="sources" class="tab active">소스함</button>
+    <button data-tab="drafts" class="tab">초안</button>
+    <button data-tab="posts" class="tab">발행 이력</button>
+  </nav>
+</header>
+
+<main>
+  <!-- 소스함 -->
+  <section id="tab-sources" class="panel">
+    <div class="toolbar">
+      <select id="src-type-filter">
+        <option value="">전체 유형</option>
+        <option value="news">뉴스</option>
+        <option value="realestate">부동산</option>
+        <option value="stock">증시</option>
+        <option value="manual">직접 입력</option>
+      </select>
+      <button id="btn-collect">🔄 지금 수집</button>
+      <button id="btn-create-draft" class="primary" disabled>✍️ 선택한 소스로 콘텐츠 만들기</button>
+    </div>
+    <details id="manual-form">
+      <summary>➕ 주제 직접 입력</summary>
+      <input id="manual-title" placeholder="주제 (예: 7월 서울 아파트 거래량 급증)">
+      <textarea id="manual-summary" placeholder="메모/참고 내용 (선택)"></textarea>
+      <button id="btn-add-manual" class="primary">추가</button>
+    </details>
+    <div id="source-list" class="card-grid"></div>
+  </section>
+
+  <!-- 초안 -->
+  <section id="tab-drafts" class="panel" hidden>
+    <div id="draft-list" class="card-grid"></div>
+    <div id="draft-detail" hidden>
+      <button id="btn-back">← 목록으로</button>
+      <div id="draft-status"></div>
+      <h2>카드 문구</h2>
+      <div id="card-editors"></div>
+      <h2>인스타그램 캐프션</h2>
+      <textarea id="ed-caption" rows="5"></textarea>
+      <h2>Threads 글</h2>
+      <textarea id="ed-threads" rows="3"></textarea>
+      <div class="toolbar">
+        <button id="btn-save">💾 저장</button>
+        <button id="btn-regen">🔁 글 재생성</button>
+        <button id="btn-approve" class="primary">✅ 글 확정</button>
+        <button id="btn-images" class="primary">🖼️ 이미지 생성</button>
+      </div>
+      <h2>카드 미리보기</h2>
+      <div id="card-preview" class="carousel"></div>
+      <div class="toolbar">
+        <button id="btn-publish" class="danger">🚀 Instagram + Threads 배포</button>
+      </div>
+      <div id="publish-result"></div>
+    </div>
+  </section>
+
+  <!-- 발행 이력 -->
+  <section id="tab-posts" class="panel" hidden>
+    <table id="post-table">
+      <thead><tr><th>#</th><th>초안</th><th>Instagram</th><th>Threads</th><th>발행 시각</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </section>
+</main>
+
+<div id="toast" hidden></div>
+<script src="app.js"></script>
+</body>
+</html>
