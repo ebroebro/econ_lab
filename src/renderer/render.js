@@ -14,7 +14,7 @@ export async function renderCards(draftId, cards, bgImages = {}) {
     for (let i = 0; i < cards.length; i++) {
       const bgBuf = bgImages[i];
       const bgDataUri = bgBuf ? `data:image/png;base64,${bgBuf.toString('base64')}` : null;
-      const html = renderCardHtml(cards[i], { seq: i + 1, total: cards.length, bgDataUri });
+      const html = renderCardHtml(cards[i], { seq: i + 1, total: cards.length, bgDataUri, brand: config.brandName });
       await page.setContent(html, { waitUntil: 'networkidle' });
       const file = path.join(dir, `card-${i + 1}.png`);
       await page.screenshot({ path: file });

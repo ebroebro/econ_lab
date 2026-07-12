@@ -13,9 +13,10 @@ export const config = {
   root,
   dataDir,
   imagesDir,
+  brandName: process.env.BRAND_NAME || 'ECON LAB',
   geminiApiKey: process.env.GEMINI_API_KEY || '',
-  geminiTextModel: process.env.GEMINI_TEXT_MODEL || 'gemini-2.5-flash',
-  geminiImageModel: process.env.GEMINI_IMAGE_MODEL || 'gemini-2.5-flash-image',
+  geminiTextModel: process.env.GEMINI_TEXT_MODEL || 'gemini-3.5-flash',
+  geminiImageModel: process.env.GEMINI_IMAGE_MODEL || 'gemini-3.1-flash-image',
   ecosApiKey: process.env.ECOS_API_KEY || '',
   cloudinary: {
     cloudName: process.env.CLOUDINARY_CLOUD_NAME || '',
