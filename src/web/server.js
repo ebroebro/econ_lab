@@ -112,20 +112,32 @@ export function createServer(db, deps = {}) {
     const d = db.getDraft(Number(req.params.id));
     if (!d) return res.status(404).json({ error: 'not found' });
     const cards = db.listCards(d.id);
-    if (d.status !== 'images_ready' || !cards.length) {
+    if (!cards.length) {
       return res.status(400).json({ error: '이미지 생성이 완료되지 않았습니다' });
     }
-    const result = { instagram: null, threads: null };
+    // 이전 배포 시도에서 이미 성공한 플랫폼은 재발행(중복 게시)하지 않고 건너뛴다.
+    const priorPosts = db.listPosts().filter((p) => p.draft_id === d.id);
+    const alreadyInstagram = priorPosts.find((p) => p.instagram_url)?.instagram_url || null;
+    const alreadyThreads = priorPosts.find((p) => p.threads_url)?.threads_url || null;
+
+    const result = {
+      instagram: alreadyInstagram ? { permalink: alreadyInstagram, skipped: true } : null,
+      threads: alreadyThreads ? { permalink: alreadyThreads, skipped: true } : null,
+    };
     let urls;
     try {
       urls = await uploadImages(cards.map(c => c.image_path));
     } catch (e) {
       return res.status(500).json({ error: `이미지 업로드 실패: ${e.message}` });
     }
-    try { result.instagram = await publishInstagram({ imageUrls: urls, caption: d.content.caption }); }
-    catch (e) { result.instagram = { error: e.message }; }
-    try { result.threads = await publishThreads({ text: d.content.threadsText, imageUrl: urls[0] }); }
-    catch (e) { result.threads = { error: e.message }; }
+    if (!alreadyInstagram) {
+      try { result.instagram = await publishInstagram({ imageUrls: urls, caption: d.content.caption }); }
+      catch (e) { result.instagram = { error: e.message }; }
+    }
+    if (!alreadyThreads) {
+      try { result.threads = await publishThreads({ text: d.content.threadsText, imageUrl: urls[0] }); }
+      catch (e) { result.threads = { error: e.message }; }
+    }
 
     const anyOk = result.instagram?.permalink || result.threads?.permalink;
     db.savePost({
