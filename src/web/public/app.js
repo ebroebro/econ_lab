@@ -67,7 +67,7 @@ async function loadSources() {
       if (selectedSources.has(s.id)) selectedSources.delete(s.id);
       else selectedSources.add(s.id);
       card.classList.toggle('selected');
-      $('#btn-create-draft').disabled = selectedSources.size === 0;
+      $('#btn-goto-builder').disabled = selectedSources.size === 0;
     });
     list.appendChild(card);
   }
@@ -96,11 +96,62 @@ $('#btn-add-manual').addEventListener('click', async () => {
   } catch (err) { toast(err.message, true); }
 });
 
-$('#btn-create-draft').addEventListener('click', async (e) => {
+const TEMPLATE_LABEL = { cover: '표지', text: '설명', data: '수치 강조', chart: '차트', table: '순위표', outro: '마무리' };
+let slots = [];
+
+function renderSlots() {
+  const wrap = $('#slot-list');
+  wrap.innerHTML = '';
+  slots.forEach((type, i) => {
+    const row = document.createElement('div');
+    row.className = 'slot-row';
+    row.innerHTML = `
+      <span class="src-meta">카드 ${i + 1}</span>
+      <select data-i="${i}">
+        ${Object.entries(TEMPLATE_LABEL).map(([v, label]) => `<option value="${v}"${v === type ? ' selected' : ''}>${label}</option>`).join('')}
+      </select>
+      <button type="button" data-act="up" data-i="${i}" ${i === 0 ? 'disabled' : ''}>↑</button>
+      <button type="button" data-act="down" data-i="${i}" ${i === slots.length - 1 ? 'disabled' : ''}>↓</button>
+      <button type="button" data-act="remove" data-i="${i}" ${slots.length <= 1 ? 'disabled' : ''}>삭제</button>`;
+    wrap.appendChild(row);
+  });
+}
+
+$('#slot-list').addEventListener('change', (e) => {
+  if (e.target.tagName !== 'SELECT') return;
+  slots[Number(e.target.dataset.i)] = e.target.value;
+});
+
+$('#slot-list').addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-act]');
+  if (!btn) return;
+  const i = Number(btn.dataset.i);
+  if (btn.dataset.act === 'remove' && slots.length > 1) slots.splice(i, 1);
+  if (btn.dataset.act === 'up' && i > 0) [slots[i - 1], slots[i]] = [slots[i], slots[i - 1]];
+  if (btn.dataset.act === 'down' && i < slots.length - 1) [slots[i + 1], slots[i]] = [slots[i], slots[i + 1]];
+  renderSlots();
+});
+
+$('#btn-add-slot').addEventListener('click', () => { slots.push('text'); renderSlots(); });
+
+$('#btn-goto-builder').addEventListener('click', () => {
+  if (!slots.length) slots = ['cover', 'text', 'text', 'outro'];
+  $('#builder-info').textContent = `카드 구성 (소스 ${selectedSources.size}개 선택됨)`;
+  renderSlots();
+  $('#card-builder').hidden = false;
+});
+
+$('#btn-builder-back').addEventListener('click', () => {
+  $('#card-builder').hidden = true;
+});
+
+$('#btn-generate-draft').addEventListener('click', async (e) => {
   busy(e.target, true, 'Gemini 글 생성 중…');
   try {
-    const draft = await api('/api/drafts', { method: 'POST', body: { sourceIds: [...selectedSources] } });
+    const draft = await api('/api/drafts', { method: 'POST', body: { sourceIds: [...selectedSources], cardTypes: slots } });
     selectedSources.clear();
+    slots = [];
+    $('#card-builder').hidden = true;
     toast('초안이 생성되었습니다');
     $$('.tab').forEach(b => b.classList.toggle('active', b.dataset.tab === 'drafts'));
     $$('.panel').forEach(p => p.hidden = true);
