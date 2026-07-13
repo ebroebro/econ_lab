@@ -46,12 +46,13 @@ export function createServer(db, deps = {}) {
   });
 
   app.post('/api/drafts', async (req, res) => {
-    const { sourceIds } = req.body;
+    const { sourceIds, cardTypes } = req.body;
     if (!Array.isArray(sourceIds) || !sourceIds.length) return res.status(400).json({ error: 'sourceIds 필요' });
     try {
       const sources = sourceIds.map(id => db.getSource(id)).filter(Boolean);
       if (!sources.length) return res.status(400).json({ error: '소스를 찾을 수 없습니다' });
-      const content = await generateContent(sources);
+      const types = Array.isArray(cardTypes) && cardTypes.length ? cardTypes : null;
+      const content = await generateContent(sources, types);
       const draftId = db.createDraft(sourceIds);
       db.updateDraftContent(draftId, content);
       sourceIds.forEach(id => db.updateSourceStatus(id, 'used'));
@@ -79,7 +80,8 @@ export function createServer(db, deps = {}) {
     if (!d) return res.status(404).json({ error: 'not found' });
     try {
       const sources = d.source_ids.map(id => db.getSource(id)).filter(Boolean);
-      const content = await generateContent(sources);
+      const cardTypes = d.content?.cards?.length ? d.content.cards.map(c => c.template) : null;
+      const content = await generateContent(sources, cardTypes);
       db.updateDraftContent(d.id, content);
       db.updateDraftStatus(d.id, 'draft');
       res.json(db.getDraft(d.id));
