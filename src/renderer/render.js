@@ -13,7 +13,7 @@ function loadChartLib() {
   return cachedChartLib;
 }
 
-export async function renderCards(draftId, cards, bgImages = {}) {
+export async function renderCards(draftId, cards) {
   const dir = path.join(config.imagesDir, String(draftId));
   fs.mkdirSync(dir, { recursive: true });
   const browser = await chromium.launch();
@@ -21,11 +21,9 @@ export async function renderCards(draftId, cards, bgImages = {}) {
   const paths = [];
   try {
     for (let i = 0; i < cards.length; i++) {
-      const bgBuf = bgImages[i];
-      const bgDataUri = bgBuf ? `data:image/png;base64,${bgBuf.toString('base64')}` : null;
       const chartLibJs = cards[i].template === 'chart' ? loadChartLib() : '';
       const html = renderCardHtml(cards[i], {
-        seq: i + 1, total: cards.length, bgDataUri, brand: config.brandName, chartLibJs,
+        seq: i + 1, total: cards.length, brand: config.brandName, chartLibJs,
       });
       await page.setContent(html, { waitUntil: 'networkidle' });
       await page.waitForFunction(() => window.__ready === true, { timeout: 5000 });

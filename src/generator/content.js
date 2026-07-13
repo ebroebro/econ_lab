@@ -2,14 +2,15 @@ import { generateText } from './gemini.js';
 import { config } from '../config.js';
 
 const VALID_TEMPLATES = ['cover', 'text', 'data', 'chart', 'table', 'outro'];
+const TAG_COLORS = ['blue', 'red'];
 
 const TYPE_SPEC = {
-  cover: '{"template":"cover","title":"(20자 이내 강한 한 줄)","body":"(부제, 없으면 빈 문자열)"}',
-  text: '{"template":"text","title":"(20자 이내)","body":"(80자 이내 설명)","icon":"(building|percent|trend-up|trend-down|coin|calendar|alert|chart 중 하나, 없으면 빈 문자열)"}',
-  data: '{"template":"data","title":"(20자 이내)","dataLabel":"(핵심 수치, 예: 2.5%)","body":"(80자 이내 부연 설명)","icon":"(위와 동일한 아이콘 목록 중 선택, 없으면 빈 문자열)"}',
-  chart: '{"template":"chart","title":"(20자 이내)","chartType":"line 또는 bar","labels":["항목1","항목2"],"values":[숫자,숫자],"unit":"(단위, 예: %)"}',
-  table: '{"template":"table","title":"(20자 이내)","rows":[{"rank":1,"label":"이름","value":"값","delta":"+2 또는 -1 (없으면 빈 문자열)"}]}',
-  outro: '{"template":"outro","title":"(20자 이내, 팔로우 유도)","body":"(80자 이내)"}',
+  cover: '{"template":"cover","title":"(강력한 헤드라인, 20자 이내, 숫자·고유명사 포함 권장)","meta":"(날짜·공고일 등 부제, 없으면 빈 문자열)","tag":{"text":"(카테고리 라벨, 예: 청약정보·긴급속보, 없으면 null)","color":"blue 또는 red"},"body":""}',
+  text: '{"template":"text","title":"(20자 이내 소제목)","bullets":["(핵심 포인트 1개씩, 각 30자 이내, 2~5개)"],"body":"","icon":"(building|percent|trend-up|trend-down|coin|calendar|alert|chart 중 택1, 없으면 빈 문자열)","tag":null,"source":"(수치를 인용했다면 출처, 없으면 빈 문자열)"}',
+  data: '{"template":"data","title":"(수치가 무엇인지 20자 이내)","dataLabel":"(핵심 숫자 그 자체, 예: 1,495원 또는 2.5%)","dataColor":"red(위험·하락·경고) 또는 blue(중립·정보) 또는 black","rows":[{"label":"세부 항목명","value":"값"}],"body":"","icon":"","tag":null,"source":"(출처, 예: * 출처: 한국은행 2026.7.13)"}',
+  chart: '{"template":"chart","title":"(20자 이내)","chartType":"line 또는 bar","labels":["항목1","항목2"],"values":[숫자,숫자],"unit":"(단위, 예: %)","tag":null,"source":""}',
+  table: '{"template":"table","title":"(20자 이내)","columns":["열 이름1","열 이름2","열 이름3"],"rows":[["셀","셀","셀"],["셀","셀","셀"]],"tag":null,"source":"(출처)"}',
+  outro: '{"template":"outro","title":"(팔로우 유도, 20자 이내)","body":"(80자 이내)","tag":null}',
 };
 
 export function buildPrompt(sources, cardTypes = null) {
@@ -21,24 +22,37 @@ export function buildPrompt(sources, cardTypes = null) {
     ? `cards는 정확히 ${cardTypes.length}장이며, 순서와 타입은 반드시 다음과 같아야 한다: ${cardTypes.join(' → ')}.
 각 카드의 출력 형식:
 ${cardTypes.map((t, i) => `${i + 1}번 카드 (${t}): ${TYPE_SPEC[t] || TYPE_SPEC.text}`).join('\n')}`
-    : `cards는 4~7장: 첫 장 template "cover"(짧고 강한 한 줄 제목), 중간 "text" 또는 "data"(소스에 수치가 있을 때, dataLabel에 수치 요약), 마지막 "outro"(팔로우 유도).`;
+    : `cards는 내용에 필요한 만큼만 만든다(보통 1~4장, 정보가 짧으면 1장도 충분하다 — 억지로 늘리지 않는다). 수치·순위 데이터가 있으면 "data"나 "table"을, 추이가 있으면 "chart"를 적극 사용한다. 표지("cover")는 선택이며 본문 카드 하나로 헤드라인+표까지 다 담아도 된다.`;
 
-  return `너는 데이터 카드뉴스 스타일의 한국 경제·부동산 콘텐츠 에디터다.
+  return `너는 10년 이상 경력의 한국 경제·부동산 데이터 카드뉴스 에디터다. 실제 업계 계정(부동산 정보 카드뉴스)처럼 정보 밀도가 높고 한눈에 읽히는 콘텐츠를 만든다.
+
+디자인 원칙(반드시 지킬 것):
+- 장식적인 문장이나 감상 없이, 숫자·표·핵심 사실 위주로 압축한다.
+- 헤드라인은 짧고 강하게. 가능하면 구체적 숫자를 헤드라인에 넣는다(예: "코스피 7천 붕괴" O, "증시가 흔들리고 있습니다" X).
+- 소스에 있는 실제 수치는 반올림하지 말고 그대로 인용하고, 인용했다면 source 필드에 출처를 짧게 적는다(예: "* 출처: 연합뉴스"). 출처가 불분명하면 source는 빈 문자열로 둔다.
+- 비교·순위·항목이 3개 이상이면 "table"에 columns를 채워 표로 정리한다. 단순 강조 수치 하나면 "data"를 쓴다.
+- tag는 이 카드의 성격을 한 단어로 압축한 라벨이다(예: "긴급속보", "청약정보", "금리동향"). 애매하면 null로 둔다.
+- 절대 과장하거나 확정되지 않은 걸 단정하지 않는다. 정보 전달 톤. 투자 조언·매수/매도 권유 금지.
+
 아래 소스를 바탕으로 카드뉴스 구성안을 JSON으로만 출력하라.
 우리 브랜드명은 "${config.brandName}"이다. 다른 인스타그램 계정명(@아이디)은 절대 언급하지 마라.
 
 ${srcText}
 
 규칙:
-- 정보 전달 톤. 투자 조언·매수/매도 권유 금지.
 - ${cardInstruction}
-- title은 20자 이내, body는 80자 이내. 쉬운 한국어.
-- chart/table 타입인데 소스에 활용할 수치·순위 데이터가 없으면 labels/values 또는 rows를 빈 배열로 둔다.
+- title은 20자 이내. 쉬운 한국어.
+- chart/table 타입인데 소스에 활용할 수치·순위 데이터가 없으면 labels/values 또는 columns/rows를 빈 배열로 둔다.
 - caption: 인스타 캐프션 300자 이내 + 해시태그 8~12개.
 - threadsText: 200자 이내, 핵심 요약 + "자세한 카드뉴스는 인스타그램에서 확인" 유도 문구 (계정명 없이).
 
 출력 형식(JSON만, 다른 텍스트 금지):
 {"caption":"...","cards":[...],"threadsText":"..."}`;
+}
+
+function normalizeTag(tag) {
+  if (!tag || typeof tag !== 'object' || !tag.text) return null;
+  return { text: String(tag.text), color: TAG_COLORS.includes(tag.color) ? tag.color : 'blue' };
 }
 
 export function parseContent(text) {
@@ -51,6 +65,8 @@ export function parseContent(text) {
   for (const c of obj.cards) {
     if (!VALID_TEMPLATES.includes(c.template)) c.template = 'text';
     c.title = c.title || '';
+    c.tag = normalizeTag(c.tag);
+    c.source = c.source ? String(c.source) : '';
 
     if (c.template === 'chart') {
       c.labels = Array.isArray(c.labels) ? c.labels.map(String) : [];
@@ -59,18 +75,44 @@ export function parseContent(text) {
       c.chartType = c.chartType === 'bar' ? 'bar' : 'line';
       c.unit = c.unit || '';
     } else if (c.template === 'table') {
+      const hasColumns = Array.isArray(c.columns) && c.columns.length > 0;
+      if (hasColumns) {
+        c.columns = c.columns.map(String);
+        c.rows = Array.isArray(c.rows)
+          ? c.rows.map((r) => {
+              const arr = Array.isArray(r) ? r.map(String) : [];
+              while (arr.length < c.columns.length) arr.push('');
+              return arr.slice(0, c.columns.length);
+            })
+          : [];
+      } else {
+        c.columns = [];
+        c.rows = Array.isArray(c.rows)
+          ? c.rows.map((r, i) => ({
+              rank: r.rank ?? i + 1,
+              label: r.label || '',
+              value: r.value ?? '',
+              delta: r.delta || '',
+            }))
+          : [];
+      }
+    } else if (c.template === 'data') {
+      c.body = c.body || '';
+      c.icon = c.icon || '';
+      c.dataLabel = c.dataLabel || '';
+      c.dataColor = ['red', 'blue'].includes(c.dataColor) ? c.dataColor : 'black';
       c.rows = Array.isArray(c.rows)
-        ? c.rows.map((r, i) => ({
-            rank: r.rank ?? i + 1,
-            label: r.label || '',
-            value: r.value ?? '',
-            delta: r.delta || '',
-          }))
+        ? c.rows.map((r) => ({ label: r.label || '', value: r.value ?? '' }))
         : [];
+    } else if (c.template === 'text') {
+      c.body = c.body || '';
+      c.icon = c.icon || '';
+      c.bullets = Array.isArray(c.bullets) ? c.bullets.map(String).filter(Boolean) : [];
+    } else if (c.template === 'cover') {
+      c.body = c.body || '';
+      c.meta = c.meta ? String(c.meta) : '';
     } else {
       c.body = c.body || '';
-      if (c.template === 'text' || c.template === 'data') c.icon = c.icon || '';
-      if (c.template === 'data') c.dataLabel = c.dataLabel || '';
     }
   }
   return obj;

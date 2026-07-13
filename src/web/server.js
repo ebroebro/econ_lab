@@ -3,7 +3,6 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { config } from '../config.js';
 import { generateDraftContent } from '../generator/content.js';
-import { generateBackgrounds } from '../renderer/background.js';
 import { renderCards } from '../renderer/render.js';
 import { runAllCollectors } from '../collectors/agent.js';
 import { uploadImages as defaultUploadImages } from '../publisher/hosting.js';
@@ -14,7 +13,6 @@ const pub = path.join(path.dirname(fileURLToPath(import.meta.url)), 'public');
 
 export function createServer(db, deps = {}) {
   const generateContent = deps.generateContent || generateDraftContent;
-  const makeBackgrounds = deps.generateBackgrounds || generateBackgrounds;
   const renderCardImages = deps.renderCards || renderCards;
   const uploadImages = deps.uploadImages || defaultUploadImages;
   const publishInstagram = deps.publishInstagram || defaultPublishInstagram;
@@ -99,8 +97,7 @@ export function createServer(db, deps = {}) {
     const d = db.getDraft(Number(req.params.id));
     if (!d?.content?.cards?.length) return res.status(400).json({ error: '카드 문구가 없습니다' });
     try {
-      const bgs = await makeBackgrounds(d.content.cards);
-      const paths = await renderCardImages(d.id, d.content.cards, bgs);
+      const paths = await renderCardImages(d.id, d.content.cards);
       db.deleteCards(d.id);
       paths.forEach((p, i) => db.saveCard({ draftId: d.id, seq: i + 1, template: d.content.cards[i].template, imagePath: p }));
       db.updateDraftStatus(d.id, 'images_ready');

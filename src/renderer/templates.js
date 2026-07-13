@@ -8,69 +8,162 @@ const BASE_CSS = `
 * { margin:0; padding:0; box-sizing:border-box; }
 html,body { width:1080px; height:1350px; overflow:hidden;
   font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif; }
-.card { position:relative; width:1080px; height:1350px; display:flex; flex-direction:column;
-  justify-content:center; padding:90px; color:#fff;
-  background:linear-gradient(160deg,#0f2027,#203a43 50%,#2c5364); }
-.card.light { background:#ffffff; color:#12202b; }
-.bg { position:absolute; inset:0; background-size:cover; background-position:center; opacity:.35; }
-.inner { position:relative; z-index:1; }
-.brand { position:absolute; top:60px; left:90px; font-size:30px; letter-spacing:2px; opacity:.85; z-index:1; }
-.card.light .brand { opacity:.55; }
-.page { position:absolute; top:60px; right:90px; font-size:28px; opacity:.7; z-index:1; }
-.icon { margin-bottom:36px; }
-h1 { font-size:88px; font-weight:800; line-height:1.25; word-break:keep-all; }
-h2 { font-size:64px; font-weight:800; line-height:1.3; word-break:keep-all; margin-bottom:40px; }
-p  { font-size:44px; line-height:1.6; word-break:keep-all; opacity:.95; }
-.data { font-size:120px; font-weight:900; margin:50px 0; }
-.outro h2 { font-size:72px; }
-.chart-wrap { width:900px; height:640px; margin-top:20px; }
-.chart-unit { font-size:32px; opacity:.6; margin-top:16px; }
-table.rank-table { width:100%; border-collapse:collapse; margin-top:20px; }
-table.rank-table td { padding:22px 10px; font-size:38px; border-bottom:2px solid #12202b1a; }
-.rank-badge {
-  display:inline-flex; align-items:center; justify-content:center;
-  width:56px; height:56px; border-radius:50%; background:#12202b; color:#fff;
-  font-weight:800; font-size:30px;
-}
-.rank-label { font-weight:700; }
-.rank-delta.up { color:#d6293e; }
-.rank-delta.down { color:#1d6fd6; }
+.card { position:relative; width:1080px; height:1350px; background:#ffffff; color:#14181c;
+  padding:64px 64px 56px; display:flex; flex-direction:column; }
+.topbar { display:flex; justify-content:space-between; align-items:center; margin-bottom:22px; flex:none; }
+.content { flex:1; display:flex; flex-direction:column; justify-content:center; }
+.brand-chip { background:#14181c; color:#fff; font-weight:800; font-size:24px; padding:8px 18px;
+  border-radius:8px; letter-spacing:1px; }
+.page { font-size:24px; color:#8a94a0; font-weight:700; }
+.source-line { font-size:20px; color:#8a94a0; margin-bottom:16px; font-weight:600; }
+.tag { display:inline-block; font-weight:800; font-size:26px; color:#fff; padding:8px 20px;
+  border-radius:6px; margin-bottom:20px; }
+.tag.blue { background:#1d6fd6; }
+.tag.red { background:#e0243e; }
+.meta { font-size:24px; color:#5c6b7a; margin-bottom:14px; font-weight:700; }
+.icon { margin-bottom:24px; }
+h1 { font-size:74px; font-weight:900; line-height:1.28; word-break:keep-all; letter-spacing:-1px; }
+h2 { font-size:50px; font-weight:900; line-height:1.3; word-break:keep-all; margin-bottom:28px; letter-spacing:-.5px;
+  padding-left:22px; border-left:10px solid #1d6fd6; }
+h2.accent-red { border-left-color:#e0243e; }
+p.body { font-size:34px; line-height:1.6; word-break:keep-all; color:#333; margin-top:20px; }
+.outro-cta { font-size:34px; color:#5c6b7a; margin-top:20px; font-weight:600; }
+.big-stat { font-size:128px; font-weight:900; line-height:1; margin:16px 0 28px; }
+.big-stat.red { color:#e0243e; }
+.big-stat.blue { color:#1d6fd6; }
+.big-stat.black { color:#14181c; }
+.mini-rows { display:flex; flex-direction:column; margin-top:8px; }
+.mini-row { display:flex; justify-content:space-between; align-items:center; padding:20px 0;
+  border-bottom:2px solid #eef0f2; font-size:32px; }
+.mini-row .label { font-weight:700; color:#333; }
+.mini-row .value { font-weight:900; }
+.bullets { display:flex; flex-direction:column; gap:18px; margin-top:12px; }
+.bullet-item { display:flex; gap:14px; font-size:32px; line-height:1.5; font-weight:700; word-break:keep-all; }
+.bullet-icon { color:#1d6fd6; font-weight:900; flex-shrink:0; }
+.table-card { border:1px solid #e7eaee; border-radius:18px; overflow:hidden; margin-top:18px;
+  box-shadow:0 6px 20px rgba(20,24,28,.06); }
+.grid-table { width:100%; border-collapse:collapse; table-layout:fixed; }
+.grid-table th { background:#14203f; color:#fff; font-size:24px; font-weight:800; padding:22px 14px;
+  text-align:center; word-break:keep-all; letter-spacing:.5px; }
+.grid-table th:first-child { text-align:left; padding-left:30px; }
+.grid-table td { font-size:30px; font-weight:700; padding:22px 14px; text-align:center;
+  border-bottom:1px solid #eef0f2; word-break:keep-all; color:#232830; }
+.grid-table td:first-child { text-align:left; padding-left:30px; font-weight:800; }
+.grid-table tr:last-child td { border-bottom:none; }
+.grid-table tr:nth-child(even) td { background:#f6f8fb; }
+.grid-table .cell-neg { color:#e0243e; }
+.grid-table .cell-pos { color:#1d6fd6; }
+table.rank-table { width:100%; border-collapse:collapse; }
+table.rank-table td { padding:22px 16px; font-size:32px; border-bottom:1px solid #eef0f2; }
+table.rank-table tr:last-child td { border-bottom:none; }
+table.rank-table tr:nth-child(even) td { background:#f6f8fb; }
+.rank-badge { display:inline-flex; align-items:center; justify-content:center; width:52px; height:52px;
+  border-radius:50%; background:#14203f; color:#fff; font-weight:800; font-size:26px; }
+.rank-label { font-weight:800; }
+.rank-delta.up { color:#e0243e; font-weight:800; }
+.rank-delta.down { color:#1d6fd6; font-weight:800; }
+.chart-card { border:1px solid #e7eaee; border-radius:18px; padding:28px 24px 18px; margin-top:18px;
+  box-shadow:0 6px 20px rgba(20,24,28,.06); }
+.chart-wrap { width:900px; height:480px; }
+.chart-unit { font-size:24px; color:#8a94a0; margin-top:8px; font-weight:700; text-align:right; }
 `;
+
+function tagHtml(tag) {
+  if (!tag || !tag.text) return '';
+  return `<div class="tag ${tag.color === 'red' ? 'red' : 'blue'}">${esc(tag.text)}</div>`;
+}
 
 function renderChartInner(card) {
   const hasData = Array.isArray(card.labels) && Array.isArray(card.values)
     && card.labels.length > 0 && card.labels.length === card.values.length;
   if (!hasData) {
-    return `<h2>${esc(card.title)}</h2><p>⚠ 차트 데이터가 없습니다. 직접 입력해주세요.</p>`;
+    return `<h2>${esc(card.title)}</h2><p class="body">⚠ 차트 데이터가 없습니다. 직접 입력해주세요.</p>`;
   }
   const chartType = card.chartType === 'bar' ? 'bar' : 'line';
-  return `<h2>${esc(card.title)}</h2>
-    <div class="chart-wrap"><canvas id="chart" width="900" height="640"></canvas></div>
-    ${card.unit ? `<div class="chart-unit">단위: ${esc(card.unit)}</div>` : ''}
+  const accentClass = card.tag?.color === 'red' ? ' accent-red' : '';
+  return `<h2 class="${accentClass.trim()}">${esc(card.title)}</h2>
+    <div class="chart-card">
+      <div class="chart-wrap"><canvas id="chart" width="900" height="480"></canvas></div>
+      ${card.unit ? `<div class="chart-unit">단위: ${esc(card.unit)}</div>` : ''}
+    </div>
     <script>
-      new Chart(document.getElementById('chart'), {
-        type: ${JSON.stringify(chartType)},
-        data: {
-          labels: ${JSON.stringify(card.labels).replace(/</g, '\\u003c')},
-          datasets: [{
-            data: ${JSON.stringify(card.values).replace(/</g, '\\u003c')},
-            borderColor: '#1d6fd6', backgroundColor: '#1d6fd688',
-            borderWidth: 4, tension: 0.3, fill: ${chartType === 'line'}
-          }]
-        },
-        options: {
-          responsive: false, animation: false,
-          plugins: { legend: { display: false } },
-          scales: {
-            x: { ticks: { font: { size: 26 }, color: '#12202b' } },
-            y: { ticks: { font: { size: 26 }, color: '#12202b' } }
+      (function() {
+        var canvas = document.getElementById('chart');
+        var ctx2d = canvas.getContext('2d');
+        var gradient = ctx2d.createLinearGradient(0, 0, 0, 480);
+        gradient.addColorStop(0, 'rgba(29,111,214,.32)');
+        gradient.addColorStop(1, 'rgba(29,111,214,.02)');
+        var valueLabelPlugin = {
+          id: 'valueLabels',
+          afterDatasetsDraw: function (chart) {
+            var c = chart.ctx;
+            c.save();
+            c.font = '800 26px "Malgun Gothic"';
+            c.fillStyle = '#14181c';
+            c.textAlign = 'center';
+            chart.data.datasets.forEach(function (ds, di) {
+              chart.getDatasetMeta(di).data.forEach(function (el, i) {
+                var v = ds.data[i];
+                var label = typeof v === 'number' ? v.toLocaleString('ko-KR') : v;
+                c.fillText(label, el.x, el.y - 16);
+              });
+            });
+            c.restore();
           }
-        }
-      });
+        };
+        new Chart(canvas, {
+          type: ${JSON.stringify(chartType)},
+          data: {
+            labels: ${JSON.stringify(card.labels).replace(/</g, '\\u003c')},
+            datasets: [{
+              data: ${JSON.stringify(card.values).replace(/</g, '\\u003c')},
+              borderColor: '#1d6fd6',
+              backgroundColor: ${chartType === 'bar' ? "'#1d6fd6'" : 'gradient'},
+              borderWidth: 4,
+              tension: .35,
+              fill: ${chartType === 'line'},
+              pointRadius: 8,
+              pointHoverRadius: 8,
+              pointBackgroundColor: '#fff',
+              pointBorderColor: '#1d6fd6',
+              pointBorderWidth: 4,
+              borderRadius: ${chartType === 'bar' ? 12 : 0},
+              maxBarThickness: 130
+            }]
+          },
+          options: {
+            responsive: false, animation: false,
+            layout: { padding: { top: 38, right: 14, left: 4, bottom: 2 } },
+            plugins: { legend: { display: false } },
+            scales: {
+              x: { grid: { display: false }, ticks: { font: { size: 26, weight: '700' }, color: '#14181c' } },
+              y: { grace: '20%', grid: { color: '#eef0f2' }, border: { display: false }, ticks: { display: false } }
+            }
+          },
+          plugins: [valueLabelPlugin]
+        });
+      })();
     </script>`;
 }
 
+function cellClass(cell) {
+  const s = String(cell).trim();
+  if (/^[-−]/.test(s)) return ' class="cell-neg"';
+  if (/^\+/.test(s)) return ' class="cell-pos"';
+  return '';
+}
+
 function renderTableInner(card) {
+  const accentClass = card.tag?.color === 'red' ? ' accent-red' : '';
+  const heading = `<h2 class="${accentClass.trim()}">${esc(card.title)}</h2>`;
+  const hasColumns = Array.isArray(card.columns) && card.columns.length > 0;
+  if (hasColumns) {
+    const thead = `<tr>${card.columns.map(c => `<th>${esc(c)}</th>`).join('')}</tr>`;
+    const tbody = (card.rows || []).map(row =>
+      `<tr>${row.map(cell => `<td${cellClass(cell)}>${esc(String(cell))}</td>`).join('')}</tr>`
+    ).join('');
+    return `${heading}<div class="table-card"><table class="grid-table"><thead>${thead}</thead><tbody>${tbody}</tbody></table></div>`;
+  }
   const rows = (card.rows || []).map((r, i) => {
     const deltaStr = String(r.delta ?? '');
     const dir = deltaStr.trim().startsWith('-') ? 'down' : 'up';
@@ -82,36 +175,49 @@ function renderTableInner(card) {
         <td class="rank-delta ${dir}">${esc(deltaStr)}</td>
       </tr>`;
   }).join('');
-  return `<h2>${esc(card.title)}</h2><table class="rank-table"><tbody>${rows}</tbody></table>`;
+  return `${heading}<div class="table-card"><table class="rank-table"><tbody>${rows}</tbody></table></div>`;
 }
 
-export function renderCardHtml(card, { seq, total, bgDataUri = null, brand = 'ECON LAB', chartLibJs = '' } = {}) {
-  const isLight = card.template === 'chart' || card.template === 'table';
-  const bg = bgDataUri ? `<div class="bg" style="background-image:url('${bgDataUri}')"></div>` : '';
-  const iconHtml = card.icon ? `<div class="icon">${getIconSvg(card.icon, { size: 72, color: isLight ? '#12202b' : '#fff' })}</div>` : '';
+export function renderCardHtml(card, { seq, total, brand = 'ECON LAB', chartLibJs = '' } = {}) {
+  const tag = tagHtml(card.tag);
+  const source = card.source ? `<div class="source-line">${esc(card.source)}</div>` : '';
+  const meta = card.meta ? `<div class="meta">${esc(card.meta)}</div>` : '';
+  const iconHtml = card.icon ? `<div class="icon">${getIconSvg(card.icon, { size: 64, color: '#14181c' })}</div>` : '';
   let inner = '';
 
   if (card.template === 'cover') {
-    inner = `<h1>${esc(card.title)}</h1>${card.body ? `<p style="margin-top:50px">${esc(card.body)}</p>` : ''}`;
+    inner = `${tag}${meta}<h1>${esc(card.title)}</h1>${card.body ? `<p class="body">${esc(card.body)}</p>` : ''}`;
   } else if (card.template === 'data') {
-    inner = `${iconHtml}<h2>${esc(card.title)}</h2><div class="data">${esc(card.dataLabel || '')}</div><p>${esc(card.body)}</p>`;
+    const rowsHtml = (card.rows || []).map(r =>
+      `<div class="mini-row"><span class="label">${esc(r.label)}</span><span class="value">${esc(String(r.value))}</span></div>`
+    ).join('');
+    inner = `${tag}${iconHtml}<h2>${esc(card.title)}</h2>
+      <div class="big-stat ${['red', 'blue'].includes(card.dataColor) ? card.dataColor : 'black'}">${esc(card.dataLabel || '')}</div>
+      ${card.body ? `<p class="body">${esc(card.body)}</p>` : ''}
+      ${rowsHtml ? `<div class="mini-rows">${rowsHtml}</div>` : ''}`;
   } else if (card.template === 'outro') {
-    inner = `<div class="outro"><h2>${esc(card.title)}</h2><p>${esc(card.body)}</p></div>`;
+    inner = `${tag}<h2>${esc(card.title)}</h2>${card.body ? `<p class="outro-cta">${esc(card.body)}</p>` : ''}`;
   } else if (card.template === 'chart') {
-    inner = renderChartInner(card);
+    inner = `${tag}${renderChartInner(card)}`;
   } else if (card.template === 'table') {
-    inner = renderTableInner(card);
+    inner = `${tag}${renderTableInner(card)}`;
   } else {
-    inner = `${iconHtml}<h2>${esc(card.title)}</h2><p>${esc(card.body)}</p>`;
+    const bullets = (card.bullets || []).map(b =>
+      `<div class="bullet-item"><span class="bullet-icon">★</span><span>${esc(b)}</span></div>`
+    ).join('');
+    inner = `${tag}${iconHtml}<h2>${esc(card.title)}</h2>
+      ${bullets ? `<div class="bullets">${bullets}</div>` : (card.body ? `<p class="body">${esc(card.body)}</p>` : '')}`;
   }
 
   const chartScript = (card.template === 'chart' && chartLibJs) ? `<script>${chartLibJs}</script>` : '';
 
   return `<!doctype html><html><head><meta charset="utf-8"><style>${BASE_CSS}</style>${chartScript}</head>
-<body><div class="card${isLight ? ' light' : ''}">${bg}
-  <div class="brand">${esc(brand)}</div>
-  <div class="page">${seq} / ${total}</div>
-  <div class="inner">${inner}</div>
+<body><div class="card">
+  <div class="topbar"><div class="brand-chip">${esc(brand)}</div><div class="page">${seq} / ${total}</div></div>
+  <div class="content">
+    ${source}
+    <div class="inner">${inner}</div>
+  </div>
 </div>
 <script>window.__ready = true;</script>
 </body></html>`;
