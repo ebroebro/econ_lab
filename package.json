@@ -9,6 +9,7 @@
   "dependencies": {
     "@google/genai": "^2.11.0",
     "better-sqlite3": "^12.11.1",
+    "chart.js": "^4.5.1",
     "cloudinary": "^2.10.0",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",

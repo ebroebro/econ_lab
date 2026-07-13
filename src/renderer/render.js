@@ -4,6 +4,15 @@ import path from 'node:path';
 import { config } from '../config.js';
 import { renderCardHtml } from './templates.js';
 
+let cachedChartLib = null;
+function loadChartLib() {
+  if (cachedChartLib === null) {
+    const p = path.join(config.root, 'node_modules', 'chart.js', 'dist', 'chart.umd.js');
+    cachedChartLib = fs.readFileSync(p, 'utf8');
+  }
+  return cachedChartLib;
+}
+
 export async function renderCards(draftId, cards, bgImages = {}) {
   const dir = path.join(config.imagesDir, String(draftId));
   fs.mkdirSync(dir, { recursive: true });
@@ -14,8 +23,12 @@ export async function renderCards(draftId, cards, bgImages = {}) {
     for (let i = 0; i < cards.length; i++) {
       const bgBuf = bgImages[i];
       const bgDataUri = bgBuf ? `data:image/png;base64,${bgBuf.toString('base64')}` : null;
-      const html = renderCardHtml(cards[i], { seq: i + 1, total: cards.length, bgDataUri, brand: config.brandName });
+      const chartLibJs = cards[i].template === 'chart' ? loadChartLib() : '';
+      const html = renderCardHtml(cards[i], {
+        seq: i + 1, total: cards.length, bgDataUri, brand: config.brandName, chartLibJs,
+      });
       await page.setContent(html, { waitUntil: 'networkidle' });
+      await page.waitForFunction(() => window.__ready === true, { timeout: 5000 });
       const file = path.join(dir, `card-${i + 1}.png`);
       await page.screenshot({ path: file });
       paths.push(file);
