@@ -195,38 +195,153 @@ async function openDraft(id) {
   await renderCardPreview();
 }
 
+const ICON_OPTIONS = ['', 'building', 'percent', 'trend-up', 'trend-down', 'coin', 'calendar', 'alert', 'chart'];
+
+function iconSelectHtml(value) {
+  return `<select data-f="icon">${ICON_OPTIONS.map(v =>
+    `<option value="${v}"${v === (value || '') ? ' selected' : ''}>${v || '(아이콘 없음)'}</option>`
+  ).join('')}</select>`;
+}
+
+function renderChartRows(ed, c) {
+  const wrap = ed.querySelector('.chart-rows');
+  const labels = c.labels || [];
+  const values = c.values || [];
+  wrap.innerHTML = '';
+  const len = Math.max(labels.length, values.length, 1);
+  for (let r = 0; r < len; r++) {
+    const row = document.createElement('div');
+    row.className = 'row-pair';
+    row.innerHTML = `
+      <input placeholder="라벨" data-row="${r}" data-part="label">
+      <input placeholder="값" type="number" data-row="${r}" data-part="value">
+      <button type="button" class="row-remove" data-row="${r}">✕</button>`;
+    row.querySelector('[data-part="label"]').value = labels[r] || '';
+    row.querySelector('[data-part="value"]').value = values[r] ?? '';
+    wrap.appendChild(row);
+  }
+}
+
+function renderTableRows(ed, c) {
+  const wrap = ed.querySelector('.table-rows');
+  const rows = c.rows || [];
+  wrap.innerHTML = '';
+  rows.forEach((r, idx) => {
+    const row = document.createElement('div');
+    row.className = 'row-triple';
+    row.innerHTML = `
+      <input placeholder="순위" type="number" data-row="${idx}" data-part="rank">
+      <input placeholder="이름" data-row="${idx}" data-part="label">
+      <input placeholder="값" data-row="${idx}" data-part="value">
+      <input placeholder="증감 (+2, -1)" data-row="${idx}" data-part="delta">
+      <button type="button" class="row-remove" data-row="${idx}">✕</button>`;
+    row.querySelector('[data-part="rank"]').value = r.rank ?? idx + 1;
+    row.querySelector('[data-part="label"]').value = r.label || '';
+    row.querySelector('[data-part="value"]').value = r.value ?? '';
+    row.querySelector('[data-part="delta"]').value = r.delta || '';
+    wrap.appendChild(row);
+  });
+}
+
+function buildCardEditor(c, i) {
+  const ed = document.createElement('div');
+  ed.className = 'card-editor';
+  ed.dataset.i = i;
+
+  if (c.template === 'chart') {
+    ed.innerHTML = `
+      <label>카드 ${i + 1} · ${TEMPLATE_LABEL[c.template]}</label>
+      <input data-f="title" placeholder="제목">
+      <div class="chart-rows"></div>
+      <button type="button" class="row-add" data-kind="chart">+ 항목 추가</button>
+      <select data-f="chartType"><option value="line">선 그래프</option><option value="bar">막대 그래프</option></select>
+      <input data-f="unit" placeholder="단위 (예: %)">`;
+    ed.querySelector('[data-f="title"]').value = c.title || '';
+    ed.querySelector('[data-f="chartType"]').value = c.chartType || 'line';
+    ed.querySelector('[data-f="unit"]').value = c.unit || '';
+    renderChartRows(ed, c);
+  } else if (c.template === 'table') {
+    ed.innerHTML = `
+      <label>카드 ${i + 1} · ${TEMPLATE_LABEL[c.template]}</label>
+      <input data-f="title" placeholder="제목">
+      <div class="table-rows"></div>
+      <button type="button" class="row-add" data-kind="table">+ 행 추가</button>`;
+    ed.querySelector('[data-f="title"]').value = c.title || '';
+    renderTableRows(ed, c);
+  } else {
+    ed.innerHTML = `
+      <label>카드 ${i + 1} · ${TEMPLATE_LABEL[c.template] || c.template}</label>
+      <input data-f="title" placeholder="제목">
+      <textarea data-f="body" rows="2" placeholder="본문"></textarea>
+      ${c.template === 'data' ? `<input data-f="dataLabel" placeholder="수치 (예: 2.5%)">` : ''}
+      ${(c.template === 'text' || c.template === 'data') ? iconSelectHtml(c.icon) : ''}`;
+    ed.querySelector('[data-f="title"]').value = c.title || '';
+    ed.querySelector('[data-f="body"]').value = c.body || '';
+    const dl = ed.querySelector('[data-f="dataLabel"]');
+    if (dl) dl.value = c.dataLabel || '';
+  }
+
+  ed.querySelectorAll('[data-f]').forEach(el => {
+    el.addEventListener('input', () => { currentDraft.content.cards[i][el.dataset.f] = el.value; });
+  });
+
+  return ed;
+}
+
 function renderDraftDetail() {
   const d = currentDraft;
   $('#draft-status').innerHTML = `<span class="badge st-${d.status}">${ST_LABEL[d.status] || d.status}</span> <span class="src-meta">초안 #${d.id}</span>`;
   const wrap = $('#card-editors');
   wrap.innerHTML = '';
-  (d.content?.cards || []).forEach((c, i) => {
-    const ed = document.createElement('div');
-    ed.className = 'card-editor';
-    ed.innerHTML = `
-      <label>카드 ${i + 1} · ${c.template}</label>
-      <input data-i="${i}" data-f="title" placeholder="제목">
-      <textarea data-i="${i}" data-f="body" rows="2" placeholder="본문"></textarea>
-      ${c.template === 'data' ? `<input data-i="${i}" data-f="dataLabel" placeholder="수치 (예: 2.5%)">` : ''}`;
-    ed.querySelector('[data-f="title"]').value = c.title || '';
-    ed.querySelector('[data-f="body"]').value = c.body || '';
-    const dl = ed.querySelector('[data-f="dataLabel"]');
-    if (dl) dl.value = c.dataLabel || '';
-    wrap.appendChild(ed);
-  });
+  (d.content?.cards || []).forEach((c, i) => wrap.appendChild(buildCardEditor(c, i)));
   $('#ed-caption').value = d.content?.caption || '';
   $('#ed-threads').value = d.content?.threadsText || '';
   $('#btn-publish').disabled = d.status !== 'images_ready';
   $('#publish-result').innerHTML = '';
 }
 
+$('#card-editors').addEventListener('click', (e) => {
+  const addBtn = e.target.closest('.row-add');
+  const rmBtn = e.target.closest('.row-remove');
+  if (!addBtn && !rmBtn) return;
+  const ed = e.target.closest('.card-editor');
+  const i = Number(ed.dataset.i);
+  const c = currentDraft.content.cards[i];
+
+  if (addBtn) {
+    if (addBtn.dataset.kind === 'chart') {
+      c.labels = c.labels || []; c.values = c.values || [];
+      c.labels.push(''); c.values.push(0);
+      renderChartRows(ed, c);
+    } else {
+      c.rows = c.rows || [];
+      c.rows.push({ rank: c.rows.length + 1, label: '', value: '', delta: '' });
+      renderTableRows(ed, c);
+    }
+  } else if (rmBtn) {
+    const r = Number(rmBtn.dataset.row);
+    if (c.template === 'chart') { c.labels.splice(r, 1); c.values.splice(r, 1); renderChartRows(ed, c); }
+    else { c.rows.splice(r, 1); renderTableRows(ed, c); }
+  }
+});
+
+$('#card-editors').addEventListener('input', (e) => {
+  const part = e.target.dataset.part;
+  if (!part) return;
+  const ed = e.target.closest('.card-editor');
+  const i = Number(ed.dataset.i);
+  const r = Number(e.target.dataset.row);
+  const c = currentDraft.content.cards[i];
+  if (c.template === 'chart') {
+    if (part === 'label') c.labels[r] = e.target.value;
+    if (part === 'value') c.values[r] = Number(e.target.value);
+  } else if (c.template === 'table') {
+    c.rows[r] = { ...c.rows[r], [part]: part === 'rank' ? Number(e.target.value) : e.target.value };
+  }
+});
+
 function collectEditedContent() {
-  const d = currentDraft;
-  const cards = (d.content?.cards || []).map((c, i) => ({ ...c }));
-  $$('#card-editors [data-i]').forEach(el => {
-    cards[Number(el.dataset.i)][el.dataset.f] = el.value;
-  });
-  return { ...d.content, cards, caption: $('#ed-caption').value, threadsText: $('#ed-threads').value };
+  return { ...currentDraft.content, caption: $('#ed-caption').value, threadsText: $('#ed-threads').value };
 }
 
 $('#btn-back').addEventListener('click', () => {

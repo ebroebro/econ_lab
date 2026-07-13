@@ -102,3 +102,5 @@ a { color: #1d9bf0; }
 .row-triple { grid-template-columns: 80px 1fr 1fr 1fr auto; }
 .row-add { margin: 6px 0 12px; }
 .row-remove { padding: 6px 12px; background: #e0245e33; color: #ff6b8f; }
+.chart-rows, .table-rows { display: flex; flex-direction: column; }
+.card-editor select { margin-top: 4px; }
