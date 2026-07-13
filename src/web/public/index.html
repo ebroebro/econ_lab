@@ -28,7 +28,7 @@
         <option value="manual">직접 입력</option>
       </select>
       <button id="btn-collect">🔄 지금 수집</button>
-      <button id="btn-create-draft" class="primary" disabled>✍️ 선택한 소스로 콘텐츠 만들기</button>
+      <button id="btn-goto-builder" class="primary" disabled>다음: 카드 구성 →</button>
     </div>
     <details id="manual-form">
       <summary>➕ 주제 직접 입력</summary>
@@ -37,6 +37,17 @@
       <button id="btn-add-manual" class="primary">추가</button>
     </details>
     <div id="source-list" class="card-grid"></div>
+
+    <div id="card-builder" hidden>
+      <button id="btn-builder-back">← 소스 다시 선택</button>
+      <h2 id="builder-info"></h2>
+      <p class="hint">카드마다 형태를 고르세요. Gemini가 형태에 맞춰 내용을 채워드립니다.</p>
+      <div id="slot-list"></div>
+      <div class="toolbar">
+        <button id="btn-add-slot">+ 카드 추가</button>
+        <button id="btn-generate-draft" class="primary">✍️ 초안 생성</button>
+      </div>
+    </div>
   </section>
 
   <!-- 초안 -->

@@ -71,3 +71,50 @@ test('이미지 준비 전 배포는 400', async () => {
   const pub = await api(`/api/drafts/${r.json.id}/publish`, { method: 'POST' });
   assert.equal(pub.status, 400);
 });
+
+test('cardTypes를 보내면 generateContent에 그대로 전달된다', async () => {
+  const received = [];
+  const db2 = openDb(':memory:');
+  const app2 = createServer(db2, {
+    generateContent: async (sources, cardTypes) => {
+      received.push(cardTypes);
+      return { caption: 'c', cards: (cardTypes || ['cover']).map(t => ({ template: t, title: 't', body: '' })), threadsText: 'th' };
+    },
+  });
+  const srv2 = app2.listen(0);
+  try {
+    const base2 = `http://127.0.0.1:${srv2.address().port}`;
+    const sid = db2.insertSource({ type: 'manual', title: 't', url: null, summary: '', data: null });
+    const r = await fetch(base2 + '/api/drafts', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ sourceIds: [sid], cardTypes: ['cover', 'chart', 'outro'] }),
+    });
+    const draft = await r.json();
+    assert.deepEqual(received[0], ['cover', 'chart', 'outro']);
+    assert.equal(draft.content.cards.length, 3);
+  } finally { srv2.close(); }
+});
+
+test('regenerate는 기존 카드 타입 순서를 유지해서 다시 생성한다', async () => {
+  const received = [];
+  const db3 = openDb(':memory:');
+  const app3 = createServer(db3, {
+    generateContent: async (sources, cardTypes) => {
+      received.push(cardTypes);
+      return { caption: 'c2', cards: (cardTypes || ['cover']).map(t => ({ template: t, title: 't2', body: '' })), threadsText: 'th2' };
+    },
+  });
+  const srv3 = app3.listen(0);
+  try {
+    const base3 = `http://127.0.0.1:${srv3.address().port}`;
+    const sid = db3.insertSource({ type: 'manual', title: 't', url: null, summary: '', data: null });
+    let r = await fetch(base3 + '/api/drafts', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ sourceIds: [sid], cardTypes: ['cover', 'table'] }),
+    });
+    const draft = await r.json();
+    r = await fetch(base3 + `/api/drafts/${draft.id}/regenerate`, { method: 'POST' });
+    await r.json();
+    assert.deepEqual(received[1], ['cover', 'table']);
+  } finally { srv3.close(); }
+});

@@ -86,3 +86,21 @@ a { color: #1d9bf0; }
 #toast.error { background: #e0245e; }
 .spinner { display: inline-block; animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+.hint { color: #9fb0c0; font-size: 13px; margin-bottom: 14px; }
+.slot-row {
+  display: flex; align-items: center; gap: 10px;
+  background: #16202a; border: 1px solid #26334066; border-radius: 10px;
+  padding: 10px 14px; margin-bottom: 8px;
+}
+.slot-row select { width: auto; flex: 1; }
+.slot-row button { padding: 6px 12px; }
+.row-pair, .row-triple {
+  display: grid; gap: 8px; align-items: center; margin-bottom: 8px;
+}
+.row-pair { grid-template-columns: 1fr 1fr auto; }
+.row-triple { grid-template-columns: 80px 1fr 1fr 1fr auto; }
+.row-add { margin: 6px 0 12px; }
+.row-remove { padding: 6px 12px; background: #e0245e33; color: #ff6b8f; }
+.chart-rows, .table-rows { display: flex; flex-direction: column; }
+.card-editor select { margin-top: 4px; }
