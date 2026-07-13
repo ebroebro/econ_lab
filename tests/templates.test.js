@@ -78,3 +78,20 @@ test('cover/outro는 여전히 다크 배경(light 클래스 없음)이다', () 
   const html = renderCardHtml({ template: 'cover', title: 't', body: '' }, { seq: 1, total: 1 });
   assert.ok(!html.includes('class="card light"'));
 });
+
+test('chart 카드에서 labels/values의 </script> 이스케이프로 HTML 주입 방지', () => {
+  const html = renderCardHtml(
+    { template: 'chart', title: '테스트', chartType: 'line', labels: ['안전</script>한<레이블', '정상'], values: [1, 2], unit: '단위' },
+    { seq: 1, total: 1, chartLibJs: '/* chartjs */' }
+  );
+  // 스크립트 블록 내에서 labels/values가 들어갈 부분 추출 (new Chart 호출 부분)
+  const scriptStart = html.indexOf('new Chart(');
+  const scriptEnd = html.indexOf('</script>', scriptStart);
+  assert.ok(scriptStart >= 0, '차트 script 블록이 있어야 함');
+  assert.ok(scriptEnd >= 0, '차트 script 블록의 끝이 있어야 함');
+
+  const chartScriptSection = html.substring(scriptStart, scriptEnd);
+  // 스크립트 내에서 raw </script> 패턴이 없어야 함 (escape됨)
+  assert.ok(!chartScriptSection.includes('</script>'), 'labels/values 내 </script>는 이스케이프되어야 함');
+  assert.ok(chartScriptSection.includes('\\u003c'), 'escape 시퀀스가 포함되어야 함');
+});

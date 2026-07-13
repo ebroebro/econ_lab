@@ -51,9 +51,9 @@ function renderChartInner(card) {
       new Chart(document.getElementById('chart'), {
         type: ${JSON.stringify(chartType)},
         data: {
-          labels: ${JSON.stringify(card.labels)},
+          labels: ${JSON.stringify(card.labels).replace(/</g, '\\u003c')},
           datasets: [{
-            data: ${JSON.stringify(card.values)},
+            data: ${JSON.stringify(card.values).replace(/</g, '\\u003c')},
             borderColor: '#1d6fd6', backgroundColor: '#1d6fd688',
             borderWidth: 4, tension: 0.3, fill: ${chartType === 'line'}
           }]
