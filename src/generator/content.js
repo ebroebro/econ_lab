@@ -189,3 +189,51 @@ export async function generateStoryDraft(sources, genFn = generateText) {
   const raw = await genFn(buildStoryPrompt(sources));
   return parseStoryContent(raw);
 }
+
+// 카드 스토리를 재료로 네이버 블로그 전용 본문을 생성한다. 카드 이미지 N장을 [사진1..N]
+// 마커로 본문 흐름에 끼워 넣게 하고, 섹션 전환에는 [구분선], 핵심 수치 강조에는
+// [인용구]...[/인용구]를 쓰게 한다(publisher/naverBlocks.js가 이 마커들을 해석).
+export function buildBlogPrompt(sources, cards) {
+  const srcText = sources.map((s, i) =>
+    `[소스${i + 1}] (${s.type}) ${s.title}\n${s.summary || ''}`
+  ).join('\n\n');
+  const cardList = cards.map((c, i) => `[사진${i + 1}] = ${c.title || `카드 ${i + 1}`}`).join('\n');
+
+  return `너는 10년 경력의 한국 경제 블로그 에디터다. 아래 카드뉴스 스토리를, 검색해서 들어온 독자가 끝까지 읽는 네이버 블로그 글로 다시 쓴다.
+
+## 재료 — 소스
+${srcText}
+
+## 재료 — 카드 이미지(본문에 끼워 넣을 수 있는 이미지 ${cards.length}장)
+${cardList}
+
+## 작성 규칙
+- 카드 조각을 이어 붙이지 말고, 하나의 흐르는 글로 다시 쓴다(도입-전개-정리).
+- 위 이미지를 자연스러운 위치에 [사진1]~[사진${cards.length}] 마커로 배치한다. 순서대로, 각 1회씩, 관련 내용 바로 아래에 둔다.
+- 섹션이 바뀌는 곳에는 [구분선]을 넣는다(과하지 않게).
+- 핵심 수치나 한 줄 결론은 [인용구]...[/인용구]로 감싸 강조한다(1~3회).
+- 숫자는 소스와 동일하게. 과장·단정·투자 권유 금지. 쉬운 한국어.
+- 제목은 검색 친화적으로(핵심 키워드 포함, 35자 이내).
+- 태그는 5~10개, 핵심 키워드.
+
+## 출력 형식(JSON만, 다른 텍스트 금지)
+{"blogTitle":"...","blogBody":"...(마커 포함 본문, 문단은 개행으로 구분)...","blogTags":["...","..."]}`;
+}
+
+export function parseBlogContent(text) {
+  const m = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  const obj = JSON.parse((m ? m[1] : text).trim());
+  if (!obj.blogTitle || !obj.blogBody) {
+    throw new Error('생성 결과에 blogTitle/blogBody가 없습니다');
+  }
+  return {
+    blogTitle: String(obj.blogTitle),
+    blogBody: String(obj.blogBody),
+    blogTags: Array.isArray(obj.blogTags) ? obj.blogTags.map(String).filter(Boolean).slice(0, 10) : [],
+  };
+}
+
+export async function generateBlogDraft(sources, cards, genFn = generateText) {
+  const raw = await genFn(buildBlogPrompt(sources, cards));
+  return parseBlogContent(raw);
+}
