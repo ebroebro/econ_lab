@@ -6,6 +6,7 @@ import { config } from '../config.js';
 import { generateDraftContent, generateStoryDraft } from '../generator/content.js';
 import { renderCards } from '../renderer/render.js';
 import { generateCardImage } from '../renderer/aiCard.js';
+import { compositeCardFrames } from '../renderer/frame.js';
 import { runAllCollectors } from '../collectors/agent.js';
 import { uploadImages as defaultUploadImages } from '../publisher/hosting.js';
 import { publishToInstagram as defaultPublishInstagram } from '../publisher/instagram.js';
@@ -18,6 +19,7 @@ export function createServer(db, deps = {}) {
   const generateStory = deps.generateStoryDraft || generateStoryDraft;
   const renderCardImages = deps.renderCards || renderCards;
   const makeCardImage = deps.generateCardImage || generateCardImage;
+  const makeFrames = deps.compositeCardFrames || compositeCardFrames;
   const uploadImages = deps.uploadImages || defaultUploadImages;
   const publishInstagram = deps.publishInstagram || defaultPublishInstagram;
   const publishThreads = deps.publishThreads || defaultPublishThreads;
@@ -118,20 +120,30 @@ export function createServer(db, deps = {}) {
       fs.mkdirSync(dir, { recursive: true });
       const paths = new Array(cards.length);
       const fallbackIndices = [];
+      const rawBuffers = new Array(cards.length);
 
-      // 카드마다 Gemini 이미지 생성을 먼저 시도하고, 실패한 카드만 기존 HTML 렌더로 대체한다.
+      // 카드마다 Gemini로 콘텐츠 이미지를 먼저 생성하고(번호배지·MARKET BRIEF·하단 디스클레이머는 제외),
+      // 실패한 카드만 기존 HTML 렌더로 대체한다.
       for (let i = 0; i < cards.length; i++) {
         const buf = await makeCardImage(cards[i], {
           brand: config.brandName, seq: i + 1, total: cards.length, handle: config.instagramHandle,
         });
-        if (buf) {
-          const file = path.join(dir, `card-${i + 1}.png`);
-          fs.writeFileSync(file, buf);
-          paths[i] = file;
-        } else {
-          fallbackIndices.push(i);
-        }
+        if (buf) rawBuffers[i] = buf;
+        else fallbackIndices.push(i);
       }
+
+      // AI 생성이 성공한 카드는 고정 프레임(MARKET BRIEF 라벨·Swipe 안내·하단 디스클레이머)을
+      // 코드로 합성해 카드마다 위치·크기가 픽셀 단위로 동일하도록 만든다.
+      const frameItems = rawBuffers.map((buf, i) => (
+        buf ? { buf, seq: i + 1, total: cards.length, handle: config.instagramHandle } : undefined
+      ));
+      const framed = await makeFrames(frameItems);
+      frameItems.forEach((item, i) => {
+        if (!item) return;
+        const file = path.join(dir, `card-${i + 1}.png`);
+        fs.writeFileSync(file, framed[i]);
+        paths[i] = file;
+      });
 
       if (fallbackIndices.length) {
         const fallbackPaths = await renderCardImages(d.id, cards, { only: fallbackIndices });

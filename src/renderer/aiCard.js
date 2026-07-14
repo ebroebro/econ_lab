@@ -20,26 +20,15 @@ const ROLE_ILLUSTRATION = {
   summary: 'a minimal flat vector illustration of a flag or bookmark icon marking a summary, red accent',
 };
 
-function topElements(seq, total) {
-  const parts = [
-    `Layout grid: apply a consistent, generous outer margin on all four sides of the canvas, the same margin width used for the top-left badge, the top-right badge, and the body content below — never a tighter or wider margin for one corner than the other.`,
-    `Top-left corner badge: a small square badge with rounded corners, black fill, positioned right at the top-left corner touching the standard outer margin (not floating further inward), bold white number "${seq}" centered inside. Keep this badge the same compact size on every card — about one-fifteenth of the canvas width, never larger or smaller.`,
-    `Top-right corner badge: a pill shape, white background, thin black border, fully rounded ends, positioned right at the top-right corner touching the standard outer margin, vertically centered with the top-left badge (same horizontal center line), bold black text "MARKET BRIEF" in a single line (do not wrap onto two lines). Keep this pill the same compact height on every card, sized to snugly fit the text with modest horizontal padding — never larger, never wrapping.`,
-  ];
-  if (seq === 1 && total > 1) {
-    parts.push('Swipe indicator: a small pill badge, black background, white bold text "Swipe →", positioned directly beneath the MARKET BRIEF pill with a small consistent gap, right-edge aligned with it.');
-  }
-  return parts.join('\n');
-}
-
-function footerBar(handle) {
-  return `Bottom bar: a full-width horizontal bar with a light gray background and a thin border along its top edge only, spanning the entire width of the canvas and touching the very bottom edge with zero gap below it (no white margin beneath it). Keep this bar a fixed, compact height — just tall enough for one or two lines of small text — the same height on every card, never taller or shorter. Content sits inside this bar with the same horizontal margin as the rest of the layout. Left-aligned: a small lightbulb icon plus small bold dark gray Korean text "투자 유의" followed by smaller gray Korean text "본 콘텐츠는 정보 제공 목적이며, 투자 판단의 최종 책임은 투자자 본인에게 있습니다.". Right-aligned, vertically centered in the bar: small bold black text "${handle}". No other element (illustration, chart, table, flowchart, body text) may overlap or extend into this bottom bar. Do not render any pixel measurements, coordinates, rulers, or numeric labels anywhere on the image — these are internal layout notes only, never visible text.`;
+function safeZones() {
+  return `Leave two rectangular safe zones completely empty (plain white background, no text, no illustration, no decorative element, no border, no outline, no line, no shape of any kind — nothing at all, not even faint or partial marks): a full-width horizontal strip along the very TOP edge of the canvas, about one-tenth of the canvas height, and a full-width horizontal strip along the very BOTTOM edge, about one-twelfth of the canvas height. All actual content (tag badge, source line, headline, body, illustration, chart, table, flowchart) must start below the top strip and end above the bottom strip. These two strips are reserved for elements added separately after this image is generated — keep them perfectly clear. Do not render any pixel measurements, coordinates, rulers, or numeric layout labels anywhere on the image — these are internal notes only, never visible text.
+Do NOT draw any numbered badge, page number, slide number, step counter, or any standalone number-in-a-shape indicator anywhere on the image — this card is part of a numbered carousel but the number is added separately after generation, so the image itself must contain zero page/slide numbers.`;
 }
 
 function tagLine(tag) {
   if (!tag || !tag.text) return '';
   const color = tag.color === 'red' ? 'red' : 'blue';
-  return `Small rounded ${color} badge with white bold text "${tag.text}", placed below the top badges.`;
+  return `Small rounded ${color} badge with white bold text "${tag.text}", placed in the upper area, above the headline.`;
 }
 
 function sourceLine(source) {
@@ -62,7 +51,7 @@ function statsBlock(stats) {
 export function buildCardImagePrompt(card, { brand = 'ECON LAB', seq = 1, total = 1, handle = '@econ_lab_kr' } = {}) {
   const parts = [
     STYLE_BLOCK,
-    topElements(seq, total),
+    safeZones(),
     tagLine(card.tag),
     sourceLine(card.source),
   ];
@@ -130,11 +119,12 @@ export function buildCardImagePrompt(card, { brand = 'ECON LAB', seq = 1, total 
     }
   }
 
-  parts.push(footerBar(handle));
   parts.push(NO_HALLUCINATION_GUARD);
   return parts.filter(Boolean).join('\n');
 }
 
+// seq/total/handle은 프롬프트에는 더 이상 쓰이지 않지만(번호배지·MARKET BRIEF·푸터는 이제 프레임 합성 단계에서
+// 코드로 그려진다), 호출부가 그대로 넘겨도 되도록 시그니처를 유지한다.
 export async function generateCardImage(card, { brand = 'ECON LAB', seq = 1, total = 1, handle = '@econ_lab_kr', imageFn = generateImage } = {}) {
   try {
     return await imageFn(buildCardImagePrompt(card, { brand, seq, total, handle }));

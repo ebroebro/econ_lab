@@ -2,32 +2,34 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildCardImagePrompt, generateCardImage } from '../src/renderer/aiCard.js';
 
-test('cover 카드 프롬프트에 헤드라인·태그·번호배지·MARKET BRIEF가 들어간다', () => {
+test('cover 카드 프롬프트에 헤드라인·태그가 들어간다', () => {
   const p = buildCardImagePrompt(
     { template: 'cover', title: '코스피 7천 붕괴', meta: '2026년 7월 13일', body: '', tag: { text: '긴급속보', color: 'red' } },
     { seq: 1, total: 5 }
   );
   assert.ok(p.includes('코스피 7천 붕괴'));
-  assert.ok(p.includes('MARKET BRIEF'));
-  assert.ok(p.includes('bold white number "1"'));
   assert.ok(p.includes('긴급속보'));
   assert.ok(p.includes('2026년 7월 13일'));
 });
 
-test('첫 번째 카드(seq 1)이고 total이 1보다 크면 Swipe 안내가 들어간다', () => {
-  const p = buildCardImagePrompt({ template: 'cover', title: 't', body: '' }, { seq: 1, total: 3 });
-  assert.ok(p.includes('Swipe'));
-});
-
-test('첫 카드가 아니면 Swipe 안내가 없다', () => {
-  const p = buildCardImagePrompt({ template: 'cover', title: 't', body: '' }, { seq: 2, total: 3 });
+test('번호배지·MARKET BRIEF·Swipe·하단 디스클레이머는 더 이상 프롬프트에 들어가지 않는다 (프레임 합성 단계로 이동)', () => {
+  const p = buildCardImagePrompt({ template: 'cover', title: 't', body: '' }, { seq: 1, total: 3, handle: '@econ_lab_kr' });
+  assert.ok(!p.includes('MARKET BRIEF'));
   assert.ok(!p.includes('Swipe'));
+  assert.ok(!p.includes('투자 유의'));
+  assert.ok(!p.includes('@econ_lab_kr'));
 });
 
-test('모든 카드 프롬프트 하단에 투자 유의 디스클레이머와 계정 핸들이 들어간다', () => {
-  const p = buildCardImagePrompt({ template: 'cover', title: 't', body: '' }, { handle: '@econ_lab_kr' });
-  assert.ok(p.includes('투자 유의'));
-  assert.ok(p.includes('@econ_lab_kr'));
+test('프롬프트에 프레임 합성을 위한 상단/하단 전체 폭 여백 확보 지시가 들어간다', () => {
+  const p = buildCardImagePrompt({ template: 'cover', title: 't', body: '' });
+  assert.ok(p.includes('safe zone') || p.includes('safe zones'));
+  assert.ok(p.includes('TOP edge'));
+  assert.ok(p.includes('BOTTOM edge'));
+});
+
+test('프롬프트에 번호 배지를 그리지 말라는 명시적 금지 지시가 들어간다', () => {
+  const p = buildCardImagePrompt({ template: 'cover', title: 't', body: '' });
+  assert.ok(p.includes('Do NOT draw any numbered badge'));
 });
 
 test('chart 카드 프롬프트에 정확한 라벨/값이 그대로 들어간다', () => {
