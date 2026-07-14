@@ -22,17 +22,18 @@ const ROLE_ILLUSTRATION = {
 
 function topElements(seq, total) {
   const parts = [
-    `Top-left corner: small black square badge (rounded corners) with bold white number "${seq}".`,
-    `Top-right corner: small pill-shaped badge, black border, white background, bold black text "MARKET BRIEF".`,
+    `Layout grid: apply a consistent, generous outer margin on all four sides of the canvas, the same margin width used for the top-left badge, the top-right badge, and the body content below — never a tighter or wider margin for one corner than the other.`,
+    `Top-left corner badge: a small square badge with rounded corners, black fill, positioned right at the top-left corner touching the standard outer margin (not floating further inward), bold white number "${seq}" centered inside. Keep this badge the same compact size on every card — about one-fifteenth of the canvas width, never larger or smaller.`,
+    `Top-right corner badge: a pill shape, white background, thin black border, fully rounded ends, positioned right at the top-right corner touching the standard outer margin, vertically centered with the top-left badge (same horizontal center line), bold black text "MARKET BRIEF" in a single line (do not wrap onto two lines). Keep this pill the same compact height on every card, sized to snugly fit the text with modest horizontal padding — never larger, never wrapping.`,
   ];
   if (seq === 1 && total > 1) {
-    parts.push('Bottom-right of the headline area: small pill badge with black background, white bold text "Swipe →".');
+    parts.push('Swipe indicator: a small pill badge, black background, white bold text "Swipe →", positioned directly beneath the MARKET BRIEF pill with a small consistent gap, right-edge aligned with it.');
   }
   return parts.join('\n');
 }
 
 function footerBar(handle) {
-  return `Bottom of the card, a full-width thin horizontal bar with a light gray background and a thin top border, positioned at the very bottom edge: left side shows a small lightbulb icon plus small bold dark gray Korean text "투자 유의" followed by smaller gray Korean text "본 콘텐츠는 정보 제공 목적이며, 투자 판단의 최종 책임은 투자자 본인에게 있습니다.". Right side of the same bar shows small bold black text "${handle}".`;
+  return `Bottom bar: a full-width horizontal bar with a light gray background and a thin border along its top edge only, spanning the entire width of the canvas and touching the very bottom edge with zero gap below it (no white margin beneath it). Keep this bar a fixed, compact height — just tall enough for one or two lines of small text — the same height on every card, never taller or shorter. Content sits inside this bar with the same horizontal margin as the rest of the layout. Left-aligned: a small lightbulb icon plus small bold dark gray Korean text "투자 유의" followed by smaller gray Korean text "본 콘텐츠는 정보 제공 목적이며, 투자 판단의 최종 책임은 투자자 본인에게 있습니다.". Right-aligned, vertically centered in the bar: small bold black text "${handle}". No other element (illustration, chart, table, flowchart, body text) may overlap or extend into this bottom bar. Do not render any pixel measurements, coordinates, rulers, or numeric labels anywhere on the image — these are internal layout notes only, never visible text.`;
 }
 
 function tagLine(tag) {
