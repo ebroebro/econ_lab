@@ -1,4 +1,5 @@
 import express from 'express';
+import multer from 'multer';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -13,6 +14,12 @@ import { publishToInstagram as defaultPublishInstagram } from '../publisher/inst
 import { publishToThreads as defaultPublishThreads } from '../publisher/threads.js';
 
 const pub = path.join(path.dirname(fileURLToPath(import.meta.url)), 'public');
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 15 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => cb(null, file.mimetype.startsWith('image/')),
+});
 
 export function createServer(db, deps = {}) {
   const generateContent = deps.generateContent || generateDraftContent;
@@ -66,6 +73,33 @@ export function createServer(db, deps = {}) {
       const draftId = db.createDraft(sourceIds);
       db.updateDraftContent(draftId, content);
       sourceIds.forEach(id => db.updateSourceStatus(id, 'used'));
+      res.json(db.getDraft(draftId));
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
+  // 소스/Gemini 텍스트·이미지 생성 단계를 모두 건너뛰고, 다른 곳에서 만든 카드 이미지들을 그대로
+  // 업로드해 초안을 만든다. 저장 이후(카드 미리보기·배포)는 기존 초안과 완전히 동일한 흐름을 탄다.
+  app.post('/api/drafts/manual', upload.array('images', 20), (req, res) => {
+    const files = req.files || [];
+    if (!files.length) return res.status(400).json({ error: '이미지를 1장 이상 업로드하세요' });
+    try {
+      const draftId = db.createDraft([]);
+      const dir = path.join(config.imagesDir, String(draftId));
+      fs.mkdirSync(dir, { recursive: true });
+      const content = {
+        manual: true,
+        caption: req.body.caption || '',
+        threadsText: req.body.threadsText || '',
+        cards: files.map(() => ({ template: 'manual', title: '', body: '' })),
+      };
+      db.updateDraftContent(draftId, content);
+      files.forEach((f, i) => {
+        // 프론트엔드가 카드 이미지 URL을 항상 card-N.png로 구성하므로 원본 확장자와 무관하게 png로 저장한다.
+        const file = path.join(dir, `card-${i + 1}.png`);
+        fs.writeFileSync(file, f.buffer);
+        db.saveCard({ draftId, seq: i + 1, template: 'manual', imagePath: file });
+      });
+      db.updateDraftStatus(draftId, 'images_ready');
       res.json(db.getDraft(draftId));
     } catch (e) { res.status(500).json({ error: e.message }); }
   });
@@ -154,6 +188,27 @@ export function createServer(db, deps = {}) {
       paths.forEach((p, i) => db.saveCard({ draftId: d.id, seq: i + 1, template: cards[i].template, imagePath: p }));
       db.updateDraftStatus(d.id, 'images_ready');
       res.json({ cards: db.listCards(d.id), aiGenerated: cards.length - fallbackIndices.length, fallback: fallbackIndices.length });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
+  // 카드 한 장만 다른 곳에서 만든 이미지로 교체한다(AI 생성 카드·업로드 카드 모두 대상).
+  app.post('/api/drafts/:id/cards/:seq/image', upload.single('image'), (req, res) => {
+    const d = db.getDraft(Number(req.params.id));
+    if (!d) return res.status(404).json({ error: 'not found' });
+    const seq = Number(req.params.seq);
+    if (!Number.isInteger(seq) || seq < 1) return res.status(400).json({ error: '잘못된 카드 번호' });
+    if (!req.file) return res.status(400).json({ error: '이미지 파일이 필요합니다' });
+    try {
+      const dir = path.join(config.imagesDir, String(d.id));
+      fs.mkdirSync(dir, { recursive: true });
+      const file = path.join(dir, `card-${seq}.png`);
+      fs.writeFileSync(file, req.file.buffer);
+      if (!db.listCards(d.id).some((c) => c.seq === seq)) {
+        const template = d.content?.cards?.[seq - 1]?.template || 'manual';
+        db.saveCard({ draftId: d.id, seq, template, imagePath: file });
+      }
+      if (d.status === 'draft' || d.status === 'text_approved') db.updateDraftStatus(d.id, 'images_ready');
+      res.json({ cards: db.listCards(d.id) });
     } catch (e) { res.status(500).json({ error: e.message }); }
   });
 

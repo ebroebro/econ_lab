@@ -38,6 +38,14 @@
       <textarea id="manual-summary" placeholder="메모/참고 내용 (선택)"></textarea>
       <button id="btn-add-manual" class="primary">추가</button>
     </details>
+    <details id="manual-image-form">
+      <summary>🖼️ 다른 곳에서 만든 이미지로 카드뉴스 만들기</summary>
+      <p class="hint">글 생성·이미지 생성 단계를 건너뛰고, 직접 만든 카드 이미지를 그대로 업로드해 바로 미리보기·배포 단계로 넘어갑니다.</p>
+      <input type="file" id="manual-images" accept="image/*" multiple>
+      <textarea id="manual-images-caption" placeholder="인스타그램 캡션"></textarea>
+      <textarea id="manual-images-threads" placeholder="Threads 글"></textarea>
+      <button id="btn-add-manual-images" class="primary">카드뉴스 만들기</button>
+    </details>
     <div id="source-list" class="card-grid"></div>
 
     <div id="card-builder" hidden>

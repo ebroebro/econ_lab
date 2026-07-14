@@ -15,6 +15,14 @@ async function api(path, opts = {}) {
   return json;
 }
 
+// 파일 업로드용 — content-type을 직접 지정하지 않고 브라우저가 boundary를 붙이게 둔다.
+async function apiForm(path, formData) {
+  const res = await fetch(path, { method: 'POST', body: formData });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+  return json;
+}
+
 function toast(msg, isError = false) {
   const t = $('#toast');
   t.textContent = msg;
@@ -97,7 +105,24 @@ $('#btn-add-manual').addEventListener('click', async () => {
   } catch (err) { toast(err.message, true); }
 });
 
-const TEMPLATE_LABEL = { cover: '표지', text: '설명', data: '수치 강조', chart: '차트', table: '순위표', outro: '마무리' };
+$('#btn-add-manual-images').addEventListener('click', async (e) => {
+  const files = $('#manual-images').files;
+  if (!files.length) return toast('이미지를 1장 이상 선택하세요', true);
+  busy(e.target, true, '업로드 중…');
+  try {
+    const fd = new FormData();
+    for (const f of files) fd.append('images', f);
+    fd.append('caption', $('#manual-images-caption').value.trim());
+    fd.append('threadsText', $('#manual-images-threads').value.trim());
+    const draft = await apiForm('/api/drafts/manual', fd);
+    $('#manual-images').value = ''; $('#manual-images-caption').value = ''; $('#manual-images-threads').value = '';
+    toast(`카드뉴스가 생성되었습니다 (${draft.content.cards.length}장)`);
+    goToDraft(draft);
+  } catch (err) { toast(err.message, true); }
+  finally { busy(e.target, false); }
+});
+
+const TEMPLATE_LABEL = { cover: '표지', text: '설명', data: '수치 강조', chart: '차트', table: '순위표', outro: '마무리', manual: '직접 업로드' };
 let slots = [];
 
 function renderSlots() {
@@ -306,7 +331,8 @@ function buildCardEditor(c, i) {
 
 function renderDraftDetail() {
   const d = currentDraft;
-  $('#draft-status').innerHTML = `<span class="badge st-${d.status}">${ST_LABEL[d.status] || d.status}</span> <span class="src-meta">초안 #${d.id}</span>`;
+  const isManual = !!d.content?.manual;
+  $('#draft-status').innerHTML = `<span class="badge st-${d.status}">${ST_LABEL[d.status] || d.status}</span> <span class="src-meta">초안 #${d.id}${isManual ? ' · 직접 업로드' : ''}</span>`;
   const wrap = $('#card-editors');
   wrap.innerHTML = '';
   (d.content?.cards || []).forEach((c, i) => wrap.appendChild(buildCardEditor(c, i)));
@@ -314,6 +340,10 @@ function renderDraftDetail() {
   $('#ed-threads').value = d.content?.threadsText || '';
   $('#btn-publish').disabled = d.status !== 'images_ready';
   $('#publish-result').innerHTML = '';
+  // 직접 업로드한 초안은 글/이미지를 AI로 재생성하면 업로드한 이미지를 덮어써버리므로 막는다.
+  $('#btn-regen').hidden = isManual;
+  $('#btn-approve').hidden = isManual;
+  $('#btn-images').hidden = isManual;
 }
 
 $('#card-editors').addEventListener('click', (e) => {
@@ -413,11 +443,32 @@ async function renderCardPreview() {
   const prev = $('#card-preview');
   prev.innerHTML = cards.length ? '' : '<p style="color:#5c6b7a">아직 생성된 이미지가 없습니다.</p>';
   for (const c of cards) {
-    const img = document.createElement('img');
-    img.src = `/images/${currentDraft.id}/card-${c.seq}.png?t=${Date.now()}`;
-    prev.appendChild(img);
+    const cell = document.createElement('div');
+    cell.className = 'carousel-cell';
+    cell.innerHTML = `
+      <img src="/images/${currentDraft.id}/card-${c.seq}.png?t=${Date.now()}">
+      <label class="replace-label">
+        이미지 교체
+        <input type="file" accept="image/*" data-seq="${c.seq}" hidden>
+      </label>`;
+    prev.appendChild(cell);
   }
 }
+
+$('#card-preview').addEventListener('change', async (e) => {
+  const input = e.target.closest('input[type="file"][data-seq]');
+  if (!input || !input.files[0]) return;
+  const seq = input.dataset.seq;
+  try {
+    const fd = new FormData();
+    fd.append('image', input.files[0]);
+    await apiForm(`/api/drafts/${currentDraft.id}/cards/${seq}/image`, fd);
+    currentDraft = await api(`/api/drafts/${currentDraft.id}`);
+    renderDraftDetail();
+    await renderCardPreview();
+    toast(`카드 ${seq} 이미지가 교체되었습니다`);
+  } catch (err) { toast(err.message, true); }
+});
 
 $('#btn-publish').addEventListener('click', async (e) => {
   if (!confirm('Instagram과 Threads에 실제로 게시합니다. 진행할까요?')) return;

@@ -1,7 +1,10 @@
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
 import { openDb } from '../src/db.js';
 import { createServer } from '../src/web/server.js';
+import { config } from '../src/config.js';
 
 const db = openDb(':memory:');
 const app = createServer(db, {
@@ -184,4 +187,86 @@ test('이미지 생성: AI 생성 실패 카드만 HTML 폴백 렌더로 넘어�
     assert.deepEqual(only[0], [1]);
     assert.equal(body.cards.length, 2);
   } finally { srv5.close(); }
+});
+
+test('POST /api/drafts/manual — 업로드한 이미지로 바로 images_ready 초안이 만들어진다', async () => {
+  const db6 = openDb(':memory:');
+  const app6 = createServer(db6, {});
+  const srv6 = app6.listen(0);
+  try {
+    const base6 = `http://127.0.0.1:${srv6.address().port}`;
+    const fd = new FormData();
+    fd.append('images', new Blob([Buffer.from('img1-bytes')], { type: 'image/png' }), 'a.png');
+    fd.append('images', new Blob([Buffer.from('img2-bytes')], { type: 'image/png' }), 'b.jpg');
+    fd.append('caption', '캡션입니다');
+    fd.append('threadsText', '스레드 글');
+    const r = await fetch(base6 + '/api/drafts/manual', { method: 'POST', body: fd });
+    const draft = await r.json();
+    assert.equal(r.status, 200);
+    assert.equal(draft.status, 'images_ready');
+    assert.equal(draft.content.manual, true);
+    assert.equal(draft.content.caption, '캡션입니다');
+    assert.equal(draft.content.cards.length, 2);
+
+    const file1 = path.join(config.imagesDir, String(draft.id), 'card-1.png');
+    const file2 = path.join(config.imagesDir, String(draft.id), 'card-2.png');
+    assert.equal(fs.readFileSync(file1, 'utf8'), 'img1-bytes');
+    assert.equal(fs.readFileSync(file2, 'utf8'), 'img2-bytes');
+  } finally { srv6.close(); }
+});
+
+test('POST /api/drafts/manual — 이미지가 없으면 400', async () => {
+  const db7 = openDb(':memory:');
+  const app7 = createServer(db7, {});
+  const srv7 = app7.listen(0);
+  try {
+    const base7 = `http://127.0.0.1:${srv7.address().port}`;
+    const r = await fetch(base7 + '/api/drafts/manual', { method: 'POST', body: new FormData() });
+    assert.equal(r.status, 400);
+  } finally { srv7.close(); }
+});
+
+test('POST /api/drafts/:id/cards/:seq/image — 카드 한 장을 다른 이미지로 교체한다', async () => {
+  const db8 = openDb(':memory:');
+  const app8 = createServer(db8, {});
+  const srv8 = app8.listen(0);
+  try {
+    const base8 = `http://127.0.0.1:${srv8.address().port}`;
+    const fd = new FormData();
+    fd.append('images', new Blob([Buffer.from('orig-1')], { type: 'image/png' }), 'a.png');
+    fd.append('images', new Blob([Buffer.from('orig-2')], { type: 'image/png' }), 'b.png');
+    let r = await fetch(base8 + '/api/drafts/manual', { method: 'POST', body: fd });
+    const draft = await r.json();
+
+    const fd2 = new FormData();
+    fd2.append('image', new Blob([Buffer.from('replaced-1')], { type: 'image/png' }), 'new.png');
+    r = await fetch(base8 + `/api/drafts/${draft.id}/cards/1/image`, { method: 'POST', body: fd2 });
+    const body = await r.json();
+    assert.equal(r.status, 200);
+    assert.equal(body.cards.length, 2);
+
+    const file1 = path.join(config.imagesDir, String(draft.id), 'card-1.png');
+    const file2 = path.join(config.imagesDir, String(draft.id), 'card-2.png');
+    assert.equal(fs.readFileSync(file1, 'utf8'), 'replaced-1');
+    assert.equal(fs.readFileSync(file2, 'utf8'), 'orig-2');
+  } finally { srv8.close(); }
+});
+
+test('POST /api/drafts/:id/cards/:seq/image — 파일이 없으면 400, 존재하지 않는 초안이면 404', async () => {
+  const db9 = openDb(':memory:');
+  const app9 = createServer(db9, {});
+  const srv9 = app9.listen(0);
+  try {
+    const base9 = `http://127.0.0.1:${srv9.address().port}`;
+    let r = await fetch(base9 + '/api/drafts/999/cards/1/image', { method: 'POST', body: new FormData() });
+    assert.equal(r.status, 404);
+
+    const fd = new FormData();
+    fd.append('images', new Blob([Buffer.from('x')], { type: 'image/png' }), 'a.png');
+    r = await fetch(base9 + '/api/drafts/manual', { method: 'POST', body: fd });
+    const draft = await r.json();
+
+    r = await fetch(base9 + `/api/drafts/${draft.id}/cards/1/image`, { method: 'POST', body: new FormData() });
+    assert.equal(r.status, 400);
+  } finally { srv9.close(); }
 });
