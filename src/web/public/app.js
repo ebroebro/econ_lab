@@ -68,6 +68,7 @@ async function loadSources() {
       else selectedSources.add(s.id);
       card.classList.toggle('selected');
       $('#btn-goto-builder').disabled = selectedSources.size === 0;
+      $('#btn-story-mode').disabled = selectedSources.size === 0;
     });
     list.appendChild(card);
   }
@@ -145,6 +146,13 @@ $('#btn-builder-back').addEventListener('click', () => {
   $('#card-builder').hidden = true;
 });
 
+function goToDraft(draft) {
+  $$('.tab').forEach(b => b.classList.toggle('active', b.dataset.tab === 'drafts'));
+  $$('.panel').forEach(p => p.hidden = true);
+  $('#tab-drafts').hidden = false;
+  openDraft(draft.id);
+}
+
 $('#btn-generate-draft').addEventListener('click', async (e) => {
   busy(e.target, true, 'Gemini 글 생성 중…');
   try {
@@ -153,10 +161,18 @@ $('#btn-generate-draft').addEventListener('click', async (e) => {
     slots = [];
     $('#card-builder').hidden = true;
     toast('초안이 생성되었습니다');
-    $$('.tab').forEach(b => b.classList.toggle('active', b.dataset.tab === 'drafts'));
-    $$('.panel').forEach(p => p.hidden = true);
-    $('#tab-drafts').hidden = false;
-    openDraft(draft.id);
+    goToDraft(draft);
+  } catch (err) { toast(err.message, true); }
+  finally { busy(e.target, false); }
+});
+
+$('#btn-story-mode').addEventListener('click', async (e) => {
+  busy(e.target, true, 'Gemini 스토리 분석 중…');
+  try {
+    const draft = await api('/api/drafts', { method: 'POST', body: { sourceIds: [...selectedSources], storyMode: true } });
+    selectedSources.clear();
+    toast(`스토리 초안이 생성되었습니다 (${draft.content.cards.length}장)`);
+    goToDraft(draft);
   } catch (err) { toast(err.message, true); }
   finally { busy(e.target, false); }
 });
