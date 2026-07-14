@@ -114,3 +114,39 @@ test('generateStoryDraft가 genFn 결과를 파싱해 반환', async () => {
   const c = await generateStoryDraft([{ type: 'manual', title: 't', summary: '', data: null }], async () => raw);
   assert.equal(c.cards[0].role, 'summary');
 });
+
+test('parseStoryContent가 steps/conclusion을 정규화한다', () => {
+  const raw = JSON.stringify({
+    caption: 'c', threadsText: 't',
+    cards: [{ template: 'text', role: 'cause', title: '원인', body: '본문', steps: ['중동 긴장', '유가 상승', '', '인플레 우려'], conclusion: '주식시장 하락' }],
+  });
+  const c = parseStoryContent(raw);
+  assert.deepEqual(c.cards[0].steps, ['중동 긴장', '유가 상승', '인플레 우려']);
+  assert.equal(c.cards[0].conclusion, '주식시장 하락');
+});
+
+test('parseStoryContent는 steps가 없으면 conclusion도 빈 문자열로 만든다', () => {
+  const raw = JSON.stringify({
+    caption: 'c', threadsText: 't',
+    cards: [{ template: 'text', role: 'summary', title: '요약', body: '본문', conclusion: '유령 결론' }],
+  });
+  const c = parseStoryContent(raw);
+  assert.deepEqual(c.cards[0].steps, []);
+  assert.equal(c.cards[0].conclusion, '');
+});
+
+test('parseStoryContent가 stats를 정확히 2개일 때만 채운다', () => {
+  const raw1 = JSON.stringify({
+    caption: 'c', threadsText: 't',
+    cards: [{ template: 'text', role: 'marketImpact', title: '매도', body: '본문', stats: [{ label: '외국인', value: '-4,147억' }, { label: '기관', value: '-4,415억' }] }],
+  });
+  const c1 = parseStoryContent(raw1);
+  assert.deepEqual(c1.cards[0].stats, [{ label: '외국인', value: '-4,147억' }, { label: '기관', value: '-4,415억' }]);
+
+  const raw2 = JSON.stringify({
+    caption: 'c', threadsText: 't',
+    cards: [{ template: 'text', role: 'summary', title: '요약', body: '본문', stats: [{ label: '외국인', value: '-1' }] }],
+  });
+  const c2 = parseStoryContent(raw2);
+  assert.deepEqual(c2.cards[0].stats, []);
+});

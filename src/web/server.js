@@ -121,7 +121,9 @@ export function createServer(db, deps = {}) {
 
       // 카드마다 Gemini 이미지 생성을 먼저 시도하고, 실패한 카드만 기존 HTML 렌더로 대체한다.
       for (let i = 0; i < cards.length; i++) {
-        const buf = await makeCardImage(cards[i], { brand: config.brandName });
+        const buf = await makeCardImage(cards[i], {
+          brand: config.brandName, seq: i + 1, total: cards.length, handle: config.instagramHandle,
+        });
         if (buf) {
           const file = path.join(dir, `card-${i + 1}.png`);
           fs.writeFileSync(file, buf);

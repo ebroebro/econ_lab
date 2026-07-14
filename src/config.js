@@ -15,6 +15,7 @@ export const config = {
   dataDir,
   imagesDir,
   brandName: process.env.BRAND_NAME || 'ECON LAB',
+  instagramHandle: process.env.INSTAGRAM_HANDLE || '@econ_lab_kr',
   geminiApiKey: process.env.GEMINI_API_KEY || '',
   geminiTextModel: process.env.GEMINI_TEXT_MODEL || 'gemini-3.5-flash',
   geminiImageModel: process.env.GEMINI_IMAGE_MODEL || 'gemini-3.1-flash-image',

@@ -20,22 +20,51 @@ const ROLE_ILLUSTRATION = {
   summary: 'a minimal flat vector illustration of a flag or bookmark icon marking a summary, red accent',
 };
 
-function topBadge(brand) {
-  return `Top: small black rounded badge with white bold text "${brand}"`;
+function topElements(seq, total) {
+  const parts = [
+    `Top-left corner: small black square badge (rounded corners) with bold white number "${seq}".`,
+    `Top-right corner: small pill-shaped badge, black border, white background, bold black text "MARKET BRIEF".`,
+  ];
+  if (seq === 1 && total > 1) {
+    parts.push('Bottom-right of the headline area: small pill badge with black background, white bold text "Swipe →".');
+  }
+  return parts.join('\n');
+}
+
+function footerBar(handle) {
+  return `Bottom of the card, a full-width thin horizontal bar with a light gray background and a thin top border, positioned at the very bottom edge: left side shows a small lightbulb icon plus small bold dark gray Korean text "투자 유의" followed by smaller gray Korean text "본 콘텐츠는 정보 제공 목적이며, 투자 판단의 최종 책임은 투자자 본인에게 있습니다.". Right side of the same bar shows small bold black text "${handle}".`;
 }
 
 function tagLine(tag) {
   if (!tag || !tag.text) return '';
   const color = tag.color === 'red' ? 'red' : 'blue';
-  return `Small rounded ${color} badge with white bold text "${tag.text}", placed below the top badge.`;
+  return `Small rounded ${color} badge with white bold text "${tag.text}", placed below the top badges.`;
 }
 
 function sourceLine(source) {
   return source ? `Small gray text above the headline: "${source}"` : '';
 }
 
-export function buildCardImagePrompt(card, { brand = 'ECON LAB' } = {}) {
-  const parts = [STYLE_BLOCK, topBadge(brand), tagLine(card.tag), sourceLine(card.source)];
+function flowchartBlock(steps, conclusion, conclusionColor) {
+  const chain = steps.map((s, i) => `${i + 1}) "${s}"`).join(' then a downward arrow (↓) then ');
+  const concl = conclusion
+    ? ` Below the last step, a downward arrow (↓) leading to a wide highlighted box with ${conclusionColor} background and bold white Korean text: "${conclusion}".`
+    : '';
+  return `Below the headline, draw a vertical flowchart of small rounded rectangle boxes, each containing a small relevant flat icon on the left and bold black Korean text on the right, connected by downward arrows (↓) in this exact order: ${chain}.${concl} Each box text must match exactly, one phrase per box, no extra boxes.`;
+}
+
+function statsBlock(stats) {
+  const [a, b] = stats;
+  return `Below the headline, draw two side-by-side rounded rectangle boxes of equal size. Left box: small icon, bold black Korean label "${a.label}", and large bold black number "${a.value}" below it. Right box: small icon, bold black Korean label "${b.label}", and large bold black number "${b.value}" below it. Use red text for negative values, blue for positive.`;
+}
+
+export function buildCardImagePrompt(card, { brand = 'ECON LAB', seq = 1, total = 1, handle = '@econ_lab_kr' } = {}) {
+  const parts = [
+    STYLE_BLOCK,
+    topElements(seq, total),
+    tagLine(card.tag),
+    sourceLine(card.source),
+  ];
 
   if (card.template === 'chart') {
     const hasData = Array.isArray(card.labels) && Array.isArray(card.values)
@@ -78,21 +107,36 @@ export function buildCardImagePrompt(card, { brand = 'ECON LAB' } = {}) {
   } else {
     // text (일반 설명 카드, story-mode role 카드 포함)
     parts.push(headlineLine(card.title, { size: 'large, upper area' }));
-    if (card.body) parts.push(`Body text below in dark gray Korean, medium size (a separate, distinct sentence from the headline): "${card.body}"`);
-    if (Array.isArray(card.bullets) && card.bullets.length) {
-      parts.push(`As a checklist with simple bullet marks, each line exactly: ${card.bullets.join(' / ')}`);
+
+    const hasSteps = Array.isArray(card.steps) && card.steps.length > 0;
+    const hasStats = Array.isArray(card.stats) && card.stats.length === 2;
+
+    if (hasSteps) {
+      parts.push(flowchartBlock(card.steps, card.conclusion, card.tag?.color === 'red' ? 'red' : 'black'));
+      if (card.body) parts.push(`Below the flowchart, small gray Korean supporting text (a separate, distinct sentence, not one of the flowchart boxes): "${card.body}"`);
+    } else if (hasStats) {
+      parts.push(statsBlock(card.stats));
+      if (card.body) parts.push(`Below the boxes, small gray Korean supporting text: "${card.body}"`);
+    } else if (Array.isArray(card.bullets) && card.bullets.length) {
+      parts.push(`As a checklist with a small checkmark icon before each line, one item per line, each line exactly: ${card.bullets.join(' / ')}`);
+    } else if (card.body) {
+      parts.push(`Body text below in dark gray Korean, medium size (a separate, distinct sentence from the headline): "${card.body}"`);
     }
-    const illo = ROLE_ILLUSTRATION[card.role] || ROLE_ILLUSTRATION.cause;
-    parts.push(`Lower-right or bottom area: ${illo}.`);
+
+    if (!hasSteps && !hasStats) {
+      const illo = ROLE_ILLUSTRATION[card.role] || ROLE_ILLUSTRATION.cause;
+      parts.push(`Lower-right or bottom area: ${illo}.`);
+    }
   }
 
+  parts.push(footerBar(handle));
   parts.push(NO_HALLUCINATION_GUARD);
   return parts.filter(Boolean).join('\n');
 }
 
-export async function generateCardImage(card, { brand = 'ECON LAB', imageFn = generateImage } = {}) {
+export async function generateCardImage(card, { brand = 'ECON LAB', seq = 1, total = 1, handle = '@econ_lab_kr', imageFn = generateImage } = {}) {
   try {
-    return await imageFn(buildCardImagePrompt(card, { brand }));
+    return await imageFn(buildCardImagePrompt(card, { brand, seq, total, handle }));
   } catch (e) {
     console.error('[aiCard] 카드 이미지 생성 실패:', e.message);
     return null;

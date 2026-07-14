@@ -152,7 +152,9 @@ ${srcText}
 전체 카드 수는 소스가 풍부하면 8~10장, 소스가 짧거나 원인이 적으면 무리하게 늘리지 말고 4~6장으로 줄인다. 억지 카드 생성 금지.
 
 각 카드는 다음 JSON 형식이다:
-{"template":"text","role":"hook|cause|marketImpact|koreaImpact|checklist|summary","title":"(20자 이내 소제목)","body":"(60~100자, 쉬운 한국어, 경제를 잘 몰라도 이해 가능해야 함)","oneLiner":"(이 카드의 30자 이내 한 줄 요약)","tag":{"text":"카테고리 라벨","color":"blue 또는 red"},"source":"(수치를 인용했다면 출처, 없으면 빈 문자열)"}
+{"template":"text","role":"hook|cause|marketImpact|koreaImpact|checklist|summary","title":"(20자 이내 소제목)","body":"(60~100자, 쉬운 한국어, 경제를 잘 몰라도 이해 가능해야 함)","oneLiner":"(이 카드의 30자 이내 한 줄 요약)","tag":{"text":"카테고리 라벨","color":"blue 또는 red"},"source":"(수치를 인용했다면 출처, 없으면 빈 문자열)","steps":["(인과관계 흐름 단계, 각 10~15자, 2~4개. cause/marketImpact/koreaImpact처럼 원인→결과 흐름이 있는 카드에만 채운다. 없으면 빈 배열)"],"conclusion":"(steps의 최종 결론을 한 문장으로, 예: 반도체 집중 매도. steps가 없으면 빈 문자열)","stats":[{"label":"비교 대상1(예: 외국인)","value":"수치(예: -4,147억)"},{"label":"비교 대상2(예: 기관)","value":"수치"}]}
+- steps/conclusion: 이 카드가 원인→결과의 인과 흐름을 설명한다면(주로 cause, marketImpact, koreaImpact) 채운다. 없으면 둘 다 비워둔다.
+- stats: 소스에 정확히 비교 가능한 수치 2개(예: 외국인 vs 기관 매도액, 코스피 vs 코스닥)가 있을 때만 채운다. 없으면 빈 배열.
 
 ## 콘텐츠 원칙
 - 기사를 그대로 복사하지 않는다. 팩트와 의견을 명확히 구분한다.
@@ -174,6 +176,11 @@ export function parseStoryContent(text) {
   for (const c of obj.cards) {
     c.role = STORY_ROLES.includes(c.role) ? c.role : 'cause';
     c.oneLiner = c.oneLiner ? String(c.oneLiner) : '';
+    c.steps = Array.isArray(c.steps) ? c.steps.map(String).filter(Boolean).slice(0, 4) : [];
+    c.conclusion = c.steps.length ? String(c.conclusion || '') : '';
+    c.stats = Array.isArray(c.stats) && c.stats.length === 2
+      ? c.stats.map((s) => ({ label: String(s?.label || ''), value: String(s?.value ?? '') }))
+      : [];
   }
   return obj;
 }
