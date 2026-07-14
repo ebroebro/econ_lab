@@ -338,8 +338,11 @@ function renderDraftDetail() {
   (d.content?.cards || []).forEach((c, i) => wrap.appendChild(buildCardEditor(c, i)));
   $('#ed-caption').value = d.content?.caption || '';
   $('#ed-threads').value = d.content?.threadsText || '';
+  $('#ed-blog-title').value = d.content?.blogTitle || '';
+  $('#ed-blog-body').value = d.content?.blogBody || '';
   $('#btn-publish').disabled = d.status !== 'images_ready';
   $('#publish-result').innerHTML = '';
+  $('#naver-result').innerHTML = '';
   // 직접 업로드한 초안은 글/이미지를 AI로 재생성하면 업로드한 이미지를 덮어써버리므로 막는다.
   $('#btn-regen').hidden = isManual;
   $('#btn-approve').hidden = isManual;
@@ -387,7 +390,13 @@ $('#card-editors').addEventListener('input', (e) => {
 });
 
 function collectEditedContent() {
-  return { ...currentDraft.content, caption: $('#ed-caption').value, threadsText: $('#ed-threads').value };
+  return {
+    ...currentDraft.content,
+    caption: $('#ed-caption').value,
+    threadsText: $('#ed-threads').value,
+    blogTitle: $('#ed-blog-title').value,
+    blogBody: $('#ed-blog-body').value,
+  };
 }
 
 $('#btn-back').addEventListener('click', () => {
@@ -491,6 +500,38 @@ $('#btn-publish').addEventListener('click', async (e) => {
     out.textContent = `배포 실패: ${err.message}`;
     toast(err.message, true);
   }
+  finally { busy(e.target, false); }
+});
+
+$('#btn-gen-blog').addEventListener('click', async (e) => {
+  busy(e.target, true, 'Gemini 블로그 본문 생성 중…');
+  try {
+    currentDraft = await api(`/api/drafts/${currentDraft.id}/blog`, { method: 'POST' });
+    renderDraftDetail();
+    await renderCardPreview();
+    toast('블로그 본문이 생성되었습니다. 검토 후 임시저장하세요.');
+  } catch (err) { toast(err.message, true); }
+  finally { busy(e.target, false); }
+});
+
+$('#btn-publish-naver').addEventListener('click', async (e) => {
+  if (!$('#ed-blog-body').value.trim()) return toast('블로그 본문을 먼저 생성하세요', true);
+  // 편집한 본문을 먼저 저장한 뒤 포스팅.
+  await api(`/api/drafts/${currentDraft.id}/content`, { method: 'PUT', body: { content: collectEditedContent() } });
+  busy(e.target, true, '네이버 임시저장 중… (CAPTCHA가 뜨면 열린 브라우저에서 풀어주세요)');
+  const out = $('#naver-result');
+  out.textContent = '';
+  try {
+    const { jobId } = await api(`/api/drafts/${currentDraft.id}/publish-naver`, { method: 'POST' });
+    // 상태 폴링(최대 3분).
+    for (let i = 0; i < 90; i++) {
+      await new Promise((r) => setTimeout(r, 2000));
+      const job = await api(`/api/naver-jobs/${jobId}`);
+      out.textContent = `상태: ${job.status}${job.message ? ' — ' + job.message : ''}`;
+      if (job.status === 'done') { toast('네이버 블로그에 임시저장되었습니다'); break; }
+      if (job.status === 'error') { toast(job.message || '임시저장 실패', true); break; }
+    }
+  } catch (err) { toast(err.message, true); out.textContent = err.message; }
   finally { busy(e.target, false); }
 });
 
