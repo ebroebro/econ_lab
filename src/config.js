@@ -4,7 +4,8 @@ import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
-const dataDir = path.join(root, 'data');
+// 테스트가 운영 데이터 폴더에 실제 파일을 쓰지 않도록 DATA_DIR로 격리 가능하게 함.
+const dataDir = process.env.DATA_DIR || path.join(root, 'data');
 const imagesDir = path.join(dataDir, 'images');
 fs.mkdirSync(imagesDir, { recursive: true });
 

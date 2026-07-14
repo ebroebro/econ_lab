@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildPrompt, parseContent, generateDraftContent } from '../src/generator/content.js';
+import { buildPrompt, parseContent, generateDraftContent, buildStoryPrompt, parseStoryContent, generateStoryDraft } from '../src/generator/content.js';
 
 const SAMPLE = JSON.stringify({
   caption: '오늘의 기준금리 소식 📉 #부동산 #기준금리',
@@ -78,4 +78,39 @@ test('parseContent가 table 카드에 rows가 없으면 빈 배열로 채운다'
   const raw = JSON.stringify({ caption: 'c', threadsText: 't', cards: [{ template: 'table', title: '순위' }] });
   const c = parseContent(raw);
   assert.deepEqual(c.cards[0].rows, []);
+});
+
+test('buildStoryPrompt에 STEP1/STEP2 공식과 role 목록이 들어간다', () => {
+  const p = buildStoryPrompt([{ type: 'news', title: '코스피 급락', summary: '반도체 우려', data: null }]);
+  assert.ok(p.includes('코스피 급락'));
+  assert.ok(p.includes('hook'));
+  assert.ok(p.includes('marketImpact'));
+  assert.ok(p.includes('koreaImpact'));
+  assert.ok(p.includes('checklist'));
+  assert.ok(p.includes('summary'));
+  assert.ok(p.includes('가능성'));
+});
+
+test('parseStoryContent가 role을 정규화하고 잘못된 값은 cause로 보정한다', () => {
+  const raw = JSON.stringify({
+    caption: 'c', threadsText: 't',
+    cards: [
+      { template: 'text', role: 'hook', title: '궁금증', body: '본문', oneLiner: '요약' },
+      { template: 'text', role: 'invalid-role', title: '뭔가', body: '본문' },
+    ],
+  });
+  const c = parseStoryContent(raw);
+  assert.equal(c.cards[0].role, 'hook');
+  assert.equal(c.cards[0].oneLiner, '요약');
+  assert.equal(c.cards[1].role, 'cause');
+  assert.equal(c.cards[1].oneLiner, '');
+});
+
+test('generateStoryDraft가 genFn 결과를 파싱해 반환', async () => {
+  const raw = JSON.stringify({
+    caption: 'c', threadsText: 't',
+    cards: [{ template: 'text', role: 'summary', title: '요약', body: '본문' }],
+  });
+  const c = await generateStoryDraft([{ type: 'manual', title: 't', summary: '', data: null }], async () => raw);
+  assert.equal(c.cards[0].role, 'summary');
 });

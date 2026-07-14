@@ -11,7 +11,13 @@ const app = createServer(db, {
     threadsText: 'th',
   }),
   generateBackgrounds: async () => ({}),
-  renderCards: async (draftId, cards) => cards.map((_, i) => `data/images/${draftId}/card-${i + 1}.png`),
+  generateCardImage: async () => null,
+  renderCards: async (draftId, cards, opts) => {
+    const indices = opts?.only || cards.map((_, i) => i);
+    const paths = new Array(cards.length);
+    indices.forEach((i) => { paths[i] = `data/images/${draftId}/card-${i + 1}.png`; });
+    return paths;
+  },
   uploadImages: async (paths) => paths.map((_, i) => `https://cdn/x${i}.png`),
   publishInstagram: async () => ({ id: 'ig1', permalink: 'https://instagram.com/p/x' }),
   publishThreads: async () => { throw new Error('threads down'); },
@@ -117,4 +123,63 @@ test('regenerate는 기존 카드 타입 순서를 유지해서 다시 생성한
     await r.json();
     assert.deepEqual(received[1], ['cover', 'table']);
   } finally { srv3.close(); }
+});
+
+test('이미지 생성: AI 생성이 성공한 카드는 HTML 폴백 렌더를 타지 않는다', async () => {
+  let renderCalled = false;
+  const db4 = openDb(':memory:');
+  const app4 = createServer(db4, {
+    generateContent: async () => ({ caption: 'c', cards: [{ template: 'cover', title: 't', body: '' }], threadsText: 'th' }),
+    generateCardImage: async () => Buffer.from('fake-png-bytes'),
+    renderCards: async () => { renderCalled = true; return []; },
+  });
+  const srv4 = app4.listen(0);
+  try {
+    const base4 = `http://127.0.0.1:${srv4.address().port}`;
+    const sid = db4.insertSource({ type: 'manual', title: 't', url: null, summary: '', data: null });
+    let r = await fetch(base4 + '/api/drafts', {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ sourceIds: [sid] }),
+    });
+    const draft = await r.json();
+    r = await fetch(base4 + `/api/drafts/${draft.id}/images`, { method: 'POST' });
+    const body = await r.json();
+    assert.equal(body.aiGenerated, 1);
+    assert.equal(body.fallback, 0);
+    assert.equal(renderCalled, false);
+    assert.equal(body.cards.length, 1);
+  } finally { srv4.close(); }
+});
+
+test('이미지 생성: AI 생성 실패 카드만 HTML 폴백 렌더로 넘어간다', async () => {
+  const only = [];
+  const db5 = openDb(':memory:');
+  const app5 = createServer(db5, {
+    generateContent: async () => ({
+      caption: 'c',
+      cards: [{ template: 'cover', title: 'A', body: '' }, { template: 'cover', title: 'B', body: '' }],
+      threadsText: 'th',
+    }),
+    generateCardImage: async (card) => (card.title === 'A' ? Buffer.from('ok') : null),
+    renderCards: async (draftId, cards, opts) => {
+      only.push(opts?.only);
+      const paths = new Array(cards.length);
+      (opts?.only || []).forEach((i) => { paths[i] = `data/images/${draftId}/card-${i + 1}.png`; });
+      return paths;
+    },
+  });
+  const srv5 = app5.listen(0);
+  try {
+    const base5 = `http://127.0.0.1:${srv5.address().port}`;
+    const sid = db5.insertSource({ type: 'manual', title: 't', url: null, summary: '', data: null });
+    let r = await fetch(base5 + '/api/drafts', {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ sourceIds: [sid] }),
+    });
+    const draft = await r.json();
+    r = await fetch(base5 + `/api/drafts/${draft.id}/images`, { method: 'POST' });
+    const body = await r.json();
+    assert.equal(body.aiGenerated, 1);
+    assert.equal(body.fallback, 1);
+    assert.deepEqual(only[0], [1]);
+    assert.equal(body.cards.length, 2);
+  } finally { srv5.close(); }
 });

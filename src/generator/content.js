@@ -122,3 +122,63 @@ export async function generateDraftContent(sources, cardTypes = null, genFn = ge
   const raw = await genFn(buildPrompt(sources, cardTypes));
   return parseContent(raw);
 }
+
+const STORY_ROLES = ['hook', 'cause', 'marketImpact', 'koreaImpact', 'checklist', 'summary'];
+
+// STEP1(기사 분석) + STEP2(스토리 기획) 공식: 궁금증 → 원인(1~3개) → 시장 영향 → 한국 영향 → 체크리스트 → 요약.
+// 소스가 빈약하면 원인/영향 카드를 줄여 전체 3~10장 사이에서 유동적으로 구성한다.
+export function buildStoryPrompt(sources) {
+  const srcText = sources.map((s, i) =>
+    `[소스${i + 1}] (${s.type}) ${s.title}\n${s.summary || ''}\n${s.data ? 'data: ' + JSON.stringify(s.data) : ''}`
+  ).join('\n\n');
+
+  return `너는 아래 5가지 역할을 동시에 수행하는 전문가다: 15년 경력 경제 기자, 월가 베테랑 증권 애널리스트, 블룸버그 스타일 콘텐츠 에디터, 인스타그램 카드뉴스 기획자, 프리미엄 인포그래픽 디자이너.
+목표는 뉴스 요약이 아니라 "왜 이런 일이 발생했고 무엇을 이해해야 하는가"를 가장 쉽고 직관적으로 전달하는 것이다.
+
+## STEP1 — 기사 분석 (내부적으로 수행, 출력하지 않음)
+아래 소스들을 모두 분석해 공통된 핵심 원인을 파악하라. 소스 하나만 보고 결론 내리지 마라.
+
+${srcText}
+
+## STEP2 — 스토리 기획 (이 구조를 그대로 cards 배열로 출력)
+사람들이 끝까지 넘겨보게 만드는 스토리로 구성한다. 카드 순서와 역할(role)은 다음과 같다:
+1. role "hook": 궁금증을 유발하는 도입 (예: "오늘 코스피에 무슨 일이?")
+2. role "cause": 핵심 원인 1개당 카드 1장. 소스에서 실제로 확인되는 원인만 쓰고, 없는 원인을 지어내지 않는다(보통 1~3장).
+3. role "marketImpact": 시장 전체에 미친 영향
+4. role "koreaImpact": 한국 시장·투자자에 미치는 영향 (소스에 근거가 있을 때만 포함, 없으면 생략 가능)
+5. role "checklist": 앞으로 체크할 변수 목록 (예: 미국채 금리, 유가, 환율, 실적발표 등 — 실제 관련된 것만)
+6. role "summary": 한 장 요약 (핵심을 다시 압축)
+
+전체 카드 수는 소스가 풍부하면 8~10장, 소스가 짧거나 원인이 적으면 무리하게 늘리지 말고 4~6장으로 줄인다. 억지 카드 생성 금지.
+
+각 카드는 다음 JSON 형식이다:
+{"template":"text","role":"hook|cause|marketImpact|koreaImpact|checklist|summary","title":"(20자 이내 소제목)","body":"(60~100자, 쉬운 한국어, 경제를 잘 몰라도 이해 가능해야 함)","oneLiner":"(이 카드의 30자 이내 한 줄 요약)","tag":{"text":"카테고리 라벨","color":"blue 또는 red"},"source":"(수치를 인용했다면 출처, 없으면 빈 문자열)"}
+
+## 콘텐츠 원칙
+- 기사를 그대로 복사하지 않는다. 팩트와 의견을 명확히 구분한다.
+- 추측은 반드시 "가능성이 있다"는 식으로 표현한다. 과장하거나 클릭 유도용 허위 문구를 쓰지 않는다.
+- 숫자는 소스와 동일하게 사용한다(반올림·창작 금지).
+- 복잡한 경제 용어는 쉽게 풀어 설명한다. 투자 조언·매수매도 권유 금지.
+- 우리 브랜드명은 "${config.brandName}"이다. 다른 인스타그램 계정명은 언급하지 않는다.
+
+## 출력
+- caption: 인스타 캐프션 300자 이내 + 해시태그 8~12개.
+- threadsText: 200자 이내, 핵심 요약 + "자세한 카드뉴스는 인스타그램에서 확인" 유도 문구 (계정명 없이).
+
+출력 형식(JSON만, 다른 텍스트 금지):
+{"caption":"...","cards":[...],"threadsText":"..."}`;
+}
+
+export function parseStoryContent(text) {
+  const obj = parseContent(text);
+  for (const c of obj.cards) {
+    c.role = STORY_ROLES.includes(c.role) ? c.role : 'cause';
+    c.oneLiner = c.oneLiner ? String(c.oneLiner) : '';
+  }
+  return obj;
+}
+
+export async function generateStoryDraft(sources, genFn = generateText) {
+  const raw = await genFn(buildStoryPrompt(sources));
+  return parseStoryContent(raw);
+}

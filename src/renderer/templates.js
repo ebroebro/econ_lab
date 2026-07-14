@@ -93,19 +93,29 @@ function renderChartInner(card) {
         var gradient = ctx2d.createLinearGradient(0, 0, 0, 480);
         gradient.addColorStop(0, 'rgba(29,111,214,.32)');
         gradient.addColorStop(1, 'rgba(29,111,214,.02)');
+        var n = ${card.values.length};
+        var dense = n > 5;
+        var fontPx = dense ? 22 : 26;
         var valueLabelPlugin = {
           id: 'valueLabels',
           afterDatasetsDraw: function (chart) {
             var c = chart.ctx;
             c.save();
-            c.font = '800 26px "Malgun Gothic"';
+            c.font = '800 ' + fontPx + 'px "Malgun Gothic"';
             c.fillStyle = '#14181c';
-            c.textAlign = 'center';
             chart.data.datasets.forEach(function (ds, di) {
-              chart.getDatasetMeta(di).data.forEach(function (el, i) {
+              var meta = chart.getDatasetMeta(di);
+              var count = meta.data.length;
+              meta.data.forEach(function (el, i) {
                 var v = ds.data[i];
                 var label = typeof v === 'number' ? v.toLocaleString('ko-KR') : v;
-                c.fillText(label, el.x, el.y - 16);
+                var prev = i > 0 ? ds.data[i - 1] : null;
+                var next = i < count - 1 ? ds.data[i + 1] : null;
+                var isPeak = (prev === null || v >= prev) && (next === null || v >= next);
+                c.textAlign = i === 0 ? 'left' : (i === count - 1 ? 'right' : 'center');
+                var x = el.x + (i === 0 ? 6 : (i === count - 1 ? -6 : 0));
+                var y = isPeak ? el.y - 14 : el.y + (fontPx + 12);
+                c.fillText(label, x, y);
               });
             });
             c.restore();
@@ -122,22 +132,22 @@ function renderChartInner(card) {
               borderWidth: 4,
               tension: .35,
               fill: ${chartType === 'line'},
-              pointRadius: 8,
-              pointHoverRadius: 8,
+              pointRadius: dense ? 5 : 8,
+              pointHoverRadius: dense ? 5 : 8,
               pointBackgroundColor: '#fff',
               pointBorderColor: '#1d6fd6',
-              pointBorderWidth: 4,
+              pointBorderWidth: dense ? 3 : 4,
               borderRadius: ${chartType === 'bar' ? 12 : 0},
               maxBarThickness: 130
             }]
           },
           options: {
             responsive: false, animation: false,
-            layout: { padding: { top: 38, right: 14, left: 4, bottom: 2 } },
+            layout: { padding: { top: 44, right: 28, left: 28, bottom: 40 } },
             plugins: { legend: { display: false } },
             scales: {
-              x: { grid: { display: false }, ticks: { font: { size: 26, weight: '700' }, color: '#14181c' } },
-              y: { grace: '20%', grid: { color: '#eef0f2' }, border: { display: false }, ticks: { display: false } }
+              x: { grid: { display: false }, ticks: { font: { size: dense ? 20 : 26, weight: '700' }, color: '#14181c' } },
+              y: { grace: '22%', grid: { color: '#eef0f2' }, border: { display: false }, ticks: { display: false } }
             }
           },
           plugins: [valueLabelPlugin]

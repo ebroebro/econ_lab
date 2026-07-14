@@ -1,9 +1,11 @@
 import express from 'express';
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { config } from '../config.js';
-import { generateDraftContent } from '../generator/content.js';
+import { generateDraftContent, generateStoryDraft } from '../generator/content.js';
 import { renderCards } from '../renderer/render.js';
+import { generateCardImage } from '../renderer/aiCard.js';
 import { runAllCollectors } from '../collectors/agent.js';
 import { uploadImages as defaultUploadImages } from '../publisher/hosting.js';
 import { publishToInstagram as defaultPublishInstagram } from '../publisher/instagram.js';
@@ -13,7 +15,9 @@ const pub = path.join(path.dirname(fileURLToPath(import.meta.url)), 'public');
 
 export function createServer(db, deps = {}) {
   const generateContent = deps.generateContent || generateDraftContent;
+  const generateStory = deps.generateStoryDraft || generateStoryDraft;
   const renderCardImages = deps.renderCards || renderCards;
+  const makeCardImage = deps.generateCardImage || generateCardImage;
   const uploadImages = deps.uploadImages || defaultUploadImages;
   const publishInstagram = deps.publishInstagram || defaultPublishInstagram;
   const publishThreads = deps.publishThreads || defaultPublishThreads;
@@ -44,13 +48,19 @@ export function createServer(db, deps = {}) {
   });
 
   app.post('/api/drafts', async (req, res) => {
-    const { sourceIds, cardTypes } = req.body;
+    const { sourceIds, cardTypes, storyMode } = req.body;
     if (!Array.isArray(sourceIds) || !sourceIds.length) return res.status(400).json({ error: 'sourceIds 필요' });
     try {
       const sources = sourceIds.map(id => db.getSource(id)).filter(Boolean);
       if (!sources.length) return res.status(400).json({ error: '소스를 찾을 수 없습니다' });
-      const types = Array.isArray(cardTypes) && cardTypes.length ? cardTypes : null;
-      const content = await generateContent(sources, types);
+      let content;
+      if (storyMode) {
+        content = await generateStory(sources);
+        content.storyMode = true;
+      } else {
+        const types = Array.isArray(cardTypes) && cardTypes.length ? cardTypes : null;
+        content = await generateContent(sources, types);
+      }
       const draftId = db.createDraft(sourceIds);
       db.updateDraftContent(draftId, content);
       sourceIds.forEach(id => db.updateSourceStatus(id, 'used'));
@@ -78,8 +88,14 @@ export function createServer(db, deps = {}) {
     if (!d) return res.status(404).json({ error: 'not found' });
     try {
       const sources = d.source_ids.map(id => db.getSource(id)).filter(Boolean);
-      const cardTypes = d.content?.cards?.length ? d.content.cards.map(c => c.template) : null;
-      const content = await generateContent(sources, cardTypes);
+      let content;
+      if (d.content?.storyMode) {
+        content = await generateStory(sources);
+        content.storyMode = true;
+      } else {
+        const cardTypes = d.content?.cards?.length ? d.content.cards.map(c => c.template) : null;
+        content = await generateContent(sources, cardTypes);
+      }
       db.updateDraftContent(d.id, content);
       db.updateDraftStatus(d.id, 'draft');
       res.json(db.getDraft(d.id));
@@ -97,11 +113,33 @@ export function createServer(db, deps = {}) {
     const d = db.getDraft(Number(req.params.id));
     if (!d?.content?.cards?.length) return res.status(400).json({ error: '카드 문구가 없습니다' });
     try {
-      const paths = await renderCardImages(d.id, d.content.cards);
+      const cards = d.content.cards;
+      const dir = path.join(config.imagesDir, String(d.id));
+      fs.mkdirSync(dir, { recursive: true });
+      const paths = new Array(cards.length);
+      const fallbackIndices = [];
+
+      // 카드마다 Gemini 이미지 생성을 먼저 시도하고, 실패한 카드만 기존 HTML 렌더로 대체한다.
+      for (let i = 0; i < cards.length; i++) {
+        const buf = await makeCardImage(cards[i], { brand: config.brandName });
+        if (buf) {
+          const file = path.join(dir, `card-${i + 1}.png`);
+          fs.writeFileSync(file, buf);
+          paths[i] = file;
+        } else {
+          fallbackIndices.push(i);
+        }
+      }
+
+      if (fallbackIndices.length) {
+        const fallbackPaths = await renderCardImages(d.id, cards, { only: fallbackIndices });
+        fallbackIndices.forEach((i) => { paths[i] = fallbackPaths[i]; });
+      }
+
       db.deleteCards(d.id);
-      paths.forEach((p, i) => db.saveCard({ draftId: d.id, seq: i + 1, template: d.content.cards[i].template, imagePath: p }));
+      paths.forEach((p, i) => db.saveCard({ draftId: d.id, seq: i + 1, template: cards[i].template, imagePath: p }));
       db.updateDraftStatus(d.id, 'images_ready');
-      res.json({ cards: db.listCards(d.id) });
+      res.json({ cards: db.listCards(d.id), aiGenerated: cards.length - fallbackIndices.length, fallback: fallbackIndices.length });
     } catch (e) { res.status(500).json({ error: e.message }); }
   });
 
