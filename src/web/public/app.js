@@ -343,6 +343,7 @@ function renderDraftDetail() {
   $('#btn-publish').disabled = d.status !== 'images_ready';
   $('#publish-result').innerHTML = '';
   $('#naver-result').innerHTML = '';
+  $('#tistory-result').innerHTML = '';
   // 직접 업로드한 초안은 글/이미지를 AI로 재생성하면 업로드한 이미지를 덮어써버리므로 막는다.
   $('#btn-regen').hidden = isManual;
   $('#btn-approve').hidden = isManual;
@@ -531,6 +532,22 @@ $('#btn-publish-naver').addEventListener('click', async (e) => {
       if (job.status === 'done') { toast('네이버 블로그에 임시저장되었습니다'); break; }
       if (job.status === 'error') { toast(job.message || '임시저장 실패', true); break; }
     }
+  } catch (err) { toast(err.message, true); out.textContent = err.message; }
+  finally { busy(e.target, false); }
+});
+
+$('#btn-publish-tistory').addEventListener('click', async (e) => {
+  if (!$('#ed-blog-body').value.trim()) return toast('블로그 본문을 먼저 생성하세요', true);
+  // 편집한 본문을 먼저 저장한 뒤 포스팅.
+  await api(`/api/drafts/${currentDraft.id}/content`, { method: 'PUT', body: { content: collectEditedContent() } });
+  busy(e.target, true, '티스토리 임시저장 중…');
+  const out = $('#tistory-result');
+  out.textContent = '';
+  try {
+    const result = await api(`/api/drafts/${currentDraft.id}/publish-tistory`, { method: 'POST' });
+    out.textContent = result.message || (result.success ? '임시저장 완료' : '임시저장 실패');
+    if (result.success) toast('티스토리에 임시저장되었습니다');
+    else toast(result.message || '임시저장 실패', true);
   } catch (err) { toast(err.message, true); out.textContent = err.message; }
   finally { busy(e.target, false); }
 });
