@@ -17,6 +17,7 @@ export const config = {
   brandName: process.env.BRAND_NAME || 'ECON LAB',
   instagramHandle: process.env.INSTAGRAM_HANDLE || '@econ_lab_kr',
   naverBlogMcpDir: process.env.NAVER_BLOG_MCP_DIR || '',
+  tistoryViruagentDir: process.env.TISTORY_VIRUAGENT_DIR || '',
   geminiApiKey: process.env.GEMINI_API_KEY || '',
   geminiTextModel: process.env.GEMINI_TEXT_MODEL || 'gemini-3.5-flash',
   geminiImageModel: process.env.GEMINI_IMAGE_MODEL || 'gemini-3.1-flash-image',
