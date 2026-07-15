@@ -15,6 +15,7 @@ import { publishToInstagram as defaultPublishInstagram } from '../publisher/inst
 import { publishToThreads as defaultPublishThreads } from '../publisher/threads.js';
 import { postToNaverBlog as defaultPostToNaverBlog } from '../publisher/naverBlog.js';
 import * as defaultNaverJobs from '../publisher/naverJobStore.js';
+import { postToTistory as defaultPostToTistory } from '../publisher/tistory.js';
 
 const pub = path.join(path.dirname(fileURLToPath(import.meta.url)), 'public');
 
@@ -36,6 +37,7 @@ export function createServer(db, deps = {}) {
   const generateBlog = deps.generateBlogDraft || defaultGenerateBlogDraft;
   const postNaver = deps.postToNaverBlog || defaultPostToNaverBlog;
   const naverJobs = deps.naverJobs || defaultNaverJobs;
+  const postTistory = deps.postToTistory || defaultPostToTistory;
 
   const app = express();
   app.use(express.json({ limit: '2mb' }));
@@ -304,6 +306,26 @@ export function createServer(db, deps = {}) {
   app.get('/api/naver-jobs/:jobId', (req, res) => {
     const job = naverJobs.getJob(req.params.jobId);
     return job ? res.json({ status: job.status, message: job.message }) : res.status(404).json({ error: 'not found' });
+  });
+
+  // 티스토리는 HTTP 기반이라 CAPTCHA 대기가 없어 네이버와 달리 동기로 바로 결과를 반환한다.
+  app.post('/api/drafts/:id/publish-tistory', async (req, res) => {
+    const d = db.getDraft(Number(req.params.id));
+    if (!d) return res.status(404).json({ error: 'not found' });
+    if (!d.content?.blogBody) return res.status(400).json({ error: '블로그 본문을 먼저 생성하세요' });
+    const cards = db.listCards(d.id);
+    const imagePaths = cards.map((c) => c.image_path);
+    try {
+      const result = await postTistory({
+        title: d.content.blogTitle || d.content.cards[0]?.title || '제목',
+        body: d.content.blogBody,
+        imagePaths,
+        tags: d.content.blogTags || [],
+      });
+      res.json(result);
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
   });
 
   app.get('/api/posts', (_req, res) => res.json(db.listPosts()));

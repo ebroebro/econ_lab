@@ -335,3 +335,43 @@ test('publish-naver — 블로그 본문 없으면 400', async () => {
     assert.equal(r.status, 400);
   } finally { srvD.close(); }
 });
+
+test('POST /api/drafts/:id/publish-tistory — 블로그 본문을 임시저장하고 결과를 반환한다', async () => {
+  const dbE = openDb(':memory:');
+  let posted = null;
+  const appE = createServer(dbE, {
+    generateContent: async () => ({ caption: 'c', cards: [{ template: 'cover', title: 't', body: '' }], threadsText: 'th' }),
+    postToTistory: async (input) => { posted = input; return { success: true, message: '임시저장 완료(sequence: 1)', postUrl: null }; },
+  });
+  const srvE = appE.listen(0);
+  try {
+    const baseE = `http://127.0.0.1:${srvE.address().port}`;
+    const sid = dbE.insertSource({ type: 'manual', title: 't', url: null, summary: '', data: null });
+    let r = await fetch(baseE + '/api/drafts', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ sourceIds: [sid] }) });
+    const draft = await r.json();
+    dbE.updateDraftContent(draft.id, { ...draft.content, blogTitle: 'T', blogBody: '본문', blogTags: ['경제'] });
+    r = await fetch(baseE + `/api/drafts/${draft.id}/publish-tistory`, { method: 'POST' });
+    const body = await r.json();
+    assert.equal(r.status, 200);
+    assert.equal(body.success, true);
+    assert.equal(posted.title, 'T');
+    assert.equal(posted.body, '본문');
+    assert.deepEqual(posted.tags, ['경제']);
+  } finally { srvE.close(); }
+});
+
+test('publish-tistory — 블로그 본문 없으면 400', async () => {
+  const dbF = openDb(':memory:');
+  const appF = createServer(dbF, {
+    generateContent: async () => ({ caption: 'c', cards: [{ template: 'cover', title: 't', body: '' }], threadsText: 'th' }),
+  });
+  const srvF = appF.listen(0);
+  try {
+    const baseF = `http://127.0.0.1:${srvF.address().port}`;
+    const sid = dbF.insertSource({ type: 'manual', title: 't', url: null, summary: '', data: null });
+    let r = await fetch(baseF + '/api/drafts', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ sourceIds: [sid] }) });
+    const draft = await r.json();
+    r = await fetch(baseF + `/api/drafts/${draft.id}/publish-tistory`, { method: 'POST' });
+    assert.equal(r.status, 400);
+  } finally { srvF.close(); }
+});
