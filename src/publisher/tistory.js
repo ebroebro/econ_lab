@@ -21,7 +21,9 @@ export async function postToTistory({ title, body, imagePaths = [], tags = [] },
     const lib = deps.lib || loadDefaultLib(viruagentDir);
     await lib.initBlog();
     const blocks = buildBlocks(body, imagePaths);
-    const { html, warnings } = await renderBlocksToHtml(blocks, { uploadImage: lib.uploadImage });
+    // 화살표로 감싸 lib를 this로 바인딩한다 — Viruagent가 uploadImage를 인스턴스 메서드로
+    // 바꾸는 경우에도(현재는 아니지만) 대비.
+    const { html, warnings } = await renderBlocksToHtml(blocks, { uploadImage: (buf, name) => lib.uploadImage(buf, name) });
     const result = await lib.saveDraft({ title, content: html });
     const sequence = result?.draft?.sequence;
     const base = `임시저장 완료(sequence: ${sequence})`;
