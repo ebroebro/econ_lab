@@ -270,3 +270,68 @@ test('POST /api/drafts/:id/cards/:seq/image — 파일이 없으면 400, 존재�
     assert.equal(r.status, 400);
   } finally { srv9.close(); }
 });
+
+test('POST /api/drafts/:id/blog — 블로그 본문을 생성해 초안에 저장한다', async () => {
+  const dbB = openDb(':memory:');
+  const appB = createServer(dbB, {
+    generateContent: async () => ({ caption: 'c', cards: [{ template: 'cover', title: 't', body: '' }], threadsText: 'th' }),
+    generateBlogDraft: async () => ({ blogTitle: '블로그제목', blogBody: '본문[사진1]', blogTags: ['경제'] }),
+  });
+  const srvB = appB.listen(0);
+  try {
+    const baseB = `http://127.0.0.1:${srvB.address().port}`;
+    const sid = dbB.insertSource({ type: 'manual', title: 't', url: null, summary: '', data: null });
+    let r = await fetch(baseB + '/api/drafts', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ sourceIds: [sid] }) });
+    const draft = await r.json();
+    r = await fetch(baseB + `/api/drafts/${draft.id}/blog`, { method: 'POST' });
+    const updated = await r.json();
+    assert.equal(r.status, 200);
+    assert.equal(updated.content.blogTitle, '블로그제목');
+    assert.equal(updated.content.blogBody, '본문[사진1]');
+  } finally { srvB.close(); }
+});
+
+test('publish-naver → jobId 반환, 잡 완료 후 status done', async () => {
+  const dbC = openDb(':memory:');
+  let posted = null;
+  const appC = createServer(dbC, {
+    generateContent: async () => ({ caption: 'c', cards: [{ template: 'cover', title: 't', body: '' }], threadsText: 'th' }),
+    postToNaverBlog: async (input) => { posted = input; return { success: true, message: '임시저장 완료', postUrl: null }; },
+  });
+  const srvC = appC.listen(0);
+  try {
+    const baseC = `http://127.0.0.1:${srvC.address().port}`;
+    const sid = dbC.insertSource({ type: 'manual', title: 't', url: null, summary: '', data: null });
+    let r = await fetch(baseC + '/api/drafts', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ sourceIds: [sid] }) });
+    const draft = await r.json();
+    dbC.updateDraftContent(draft.id, { ...draft.content, blogTitle: 'T', blogBody: '본문', blogTags: [] });
+    r = await fetch(baseC + `/api/drafts/${draft.id}/publish-naver`, { method: 'POST' });
+    const { jobId } = await r.json();
+    assert.ok(jobId);
+    let status;
+    for (let i = 0; i < 50; i++) {
+      const jr = await fetch(baseC + `/api/naver-jobs/${jobId}`);
+      status = (await jr.json()).status;
+      if (status === 'done' || status === 'error') break;
+      await new Promise((res) => setTimeout(res, 20));
+    }
+    assert.equal(status, 'done');
+    assert.equal(posted.title, 'T');
+  } finally { srvC.close(); }
+});
+
+test('publish-naver — 블로그 본문 없으면 400', async () => {
+  const dbD = openDb(':memory:');
+  const appD = createServer(dbD, {
+    generateContent: async () => ({ caption: 'c', cards: [{ template: 'cover', title: 't', body: '' }], threadsText: 'th' }),
+  });
+  const srvD = appD.listen(0);
+  try {
+    const baseD = `http://127.0.0.1:${srvD.address().port}`;
+    const sid = dbD.insertSource({ type: 'manual', title: 't', url: null, summary: '', data: null });
+    let r = await fetch(baseD + '/api/drafts', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ sourceIds: [sid] }) });
+    const draft = await r.json();
+    r = await fetch(baseD + `/api/drafts/${draft.id}/publish-naver`, { method: 'POST' });
+    assert.equal(r.status, 400);
+  } finally { srvD.close(); }
+});

@@ -2,9 +2,10 @@ import express from 'express';
 import multer from 'multer';
 import fs from 'node:fs';
 import path from 'node:path';
+import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { config } from '../config.js';
-import { generateDraftContent, generateStoryDraft } from '../generator/content.js';
+import { generateDraftContent, generateStoryDraft, generateBlogDraft as defaultGenerateBlogDraft } from '../generator/content.js';
 import { renderCards } from '../renderer/render.js';
 import { generateCardImage } from '../renderer/aiCard.js';
 import { compositeCardFrames } from '../renderer/frame.js';
@@ -12,6 +13,8 @@ import { runAllCollectors } from '../collectors/agent.js';
 import { uploadImages as defaultUploadImages } from '../publisher/hosting.js';
 import { publishToInstagram as defaultPublishInstagram } from '../publisher/instagram.js';
 import { publishToThreads as defaultPublishThreads } from '../publisher/threads.js';
+import { postToNaverBlog as defaultPostToNaverBlog } from '../publisher/naverBlog.js';
+import * as defaultNaverJobs from '../publisher/naverJobStore.js';
 
 const pub = path.join(path.dirname(fileURLToPath(import.meta.url)), 'public');
 
@@ -30,6 +33,9 @@ export function createServer(db, deps = {}) {
   const uploadImages = deps.uploadImages || defaultUploadImages;
   const publishInstagram = deps.publishInstagram || defaultPublishInstagram;
   const publishThreads = deps.publishThreads || defaultPublishThreads;
+  const generateBlog = deps.generateBlogDraft || defaultGenerateBlogDraft;
+  const postNaver = deps.postToNaverBlog || defaultPostToNaverBlog;
+  const naverJobs = deps.naverJobs || defaultNaverJobs;
 
   const app = express();
   app.use(express.json({ limit: '2mb' }));
@@ -254,6 +260,50 @@ export function createServer(db, deps = {}) {
     });
     if (anyOk) db.updateDraftStatus(d.id, 'published');
     return anyOk ? res.json(result) : res.status(500).json(result);
+  });
+
+  // 카드 스토리를 재료로 블로그 전용 본문을 생성해 초안에 저장(카드 이미지는 발행 때 끼워 넣음).
+  app.post('/api/drafts/:id/blog', async (req, res) => {
+    const d = db.getDraft(Number(req.params.id));
+    if (!d?.content?.cards?.length) return res.status(400).json({ error: '카드 문구가 없습니다' });
+    try {
+      const sources = (d.source_ids || []).map((id) => db.getSource(id)).filter(Boolean);
+      const blog = await generateBlog(sources, d.content.cards);
+      db.updateDraftContent(d.id, { ...d.content, ...blog });
+      res.json(db.getDraft(d.id));
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
+  // 네이버 블로그 임시저장을 백그라운드 작업으로 시작하고 jobId를 즉시 반환한다.
+  app.post('/api/drafts/:id/publish-naver', (req, res) => {
+    const d = db.getDraft(Number(req.params.id));
+    if (!d) return res.status(404).json({ error: 'not found' });
+    if (!d.content?.blogBody) return res.status(400).json({ error: '블로그 본문을 먼저 생성하세요' });
+    const cards = db.listCards(d.id);
+    const imagePaths = cards.map((c) => c.image_path);
+    const jobId = randomUUID();
+    naverJobs.createJob(jobId);
+    // 응답을 막지 않도록 백그라운드 실행.
+    (async () => {
+      naverJobs.updateJob(jobId, 'saving');
+      try {
+        const r = await postNaver({
+          title: d.content.blogTitle || d.content.cards[0]?.title || '제목',
+          body: d.content.blogBody,
+          imagePaths,
+          tags: d.content.blogTags || [],
+        });
+        naverJobs.updateJob(jobId, r.success ? 'done' : 'error', r.message);
+      } catch (e) {
+        naverJobs.updateJob(jobId, 'error', e.message);
+      }
+    })();
+    res.json({ jobId });
+  });
+
+  app.get('/api/naver-jobs/:jobId', (req, res) => {
+    const job = naverJobs.getJob(req.params.jobId);
+    return job ? res.json({ status: job.status, message: job.message }) : res.status(404).json({ error: 'not found' });
   });
 
   app.get('/api/posts', (_req, res) => res.json(db.listPosts()));

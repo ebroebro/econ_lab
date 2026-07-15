@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildPrompt, parseContent, generateDraftContent, buildStoryPrompt, parseStoryContent, generateStoryDraft } from '../src/generator/content.js';
+import { buildPrompt, parseContent, generateDraftContent, buildStoryPrompt, parseStoryContent, generateStoryDraft, buildBlogPrompt, parseBlogContent } from '../src/generator/content.js';
 
 const SAMPLE = JSON.stringify({
   caption: '오늘의 기준금리 소식 📉 #부동산 #기준금리',
@@ -149,4 +149,26 @@ test('parseStoryContent가 stats를 정확히 2개일 때만 채운다', () => {
   });
   const c2 = parseStoryContent(raw2);
   assert.deepEqual(c2.cards[0].stats, []);
+});
+
+test('buildBlogPrompt는 카드 수만큼 [사진N] 사용을 지시한다', () => {
+  const p = buildBlogPrompt(
+    [{ type: 'news', title: '코스피 급락', summary: '외국인 매도' }],
+    [{ title: '삼전 급반전' }, { title: '반도체 부활' }, { title: '요약' }],
+  );
+  assert.match(p, /\[사진1\]/);
+  assert.match(p, /\[사진3\]/);
+  assert.ok(!p.includes('[사진4]'));
+});
+
+test('parseBlogContent는 blogTitle/blogBody/blogTags를 보정해 반환한다', () => {
+  const raw = '```json\n{"blogTitle":"제목","blogBody":"문단\\n[사진1]","blogTags":["경제","코스피",123]}\n```';
+  const r = parseBlogContent(raw);
+  assert.equal(r.blogTitle, '제목');
+  assert.equal(r.blogBody, '문단\n[사진1]');
+  assert.deepEqual(r.blogTags, ['경제', '코스피', '123']);
+});
+
+test('parseBlogContent는 blogTitle/blogBody 누락 시 예외', () => {
+  assert.throws(() => parseBlogContent('{"blogTags":[]}'));
 });

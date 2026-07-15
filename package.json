@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@google/genai": "^2.11.0",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "better-sqlite3": "^12.11.1",
     "chart.js": "^4.5.1",
     "cloudinary": "^2.10.0",
