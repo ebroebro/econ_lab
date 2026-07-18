@@ -50,6 +50,49 @@ $$('.tab').forEach(btn => btn.addEventListener('click', () => {
 // ---------- 소스함 ----------
 const TYPE_LABEL = { news: '뉴스', realestate: '부동산', stock: '증시', manual: '직접 입력' };
 
+// 소스 제목+요약을 우선순위 순서로 키워드 매칭해 세분화된 주제로 묶는다. DB/서버 변경 없이
+// 화면에서만 그룹핑한다 — 더 구체적인 카테고리(청약)를 일반적인 카테고리(부동산정책)보다 먼저 검사.
+const TOPIC_RULES = [
+  { key: 'subscription', label: '청약', patterns: [/청약/, /분양/, /입주자모집/, /특별공급/, /당첨/] },
+  { key: 'realestate_policy', label: '부동산정책', patterns: [/규제/, /DSR/, /대출/, /재건축/, /재개발/, /종부세/, /재산세/, /공급대책/, /토론회/] },
+  { key: 'us_stock', label: '미국주식', patterns: [/미국/, /나스닥/, /다우/, /S&P/, /연준/, /Fed/, /파월/, /ADR/, /월가/] },
+  { key: 'kr_stock', label: '국내주식', patterns: [/코스피/, /코스닥/, /삼성전자/, /하이닉스/, /특징주/, /상한가/, /실적/, /증권/] },
+  { key: 'rate_fx', label: '금리·환율', patterns: [/기준금리/, /환율/, /원\/달러/, /한은/, /금통위/] },
+  { key: 'etc', label: '기타', patterns: [] },
+];
+
+function classifySource(source) {
+  const text = `${source.title || ''} ${source.summary || ''}`;
+  for (const rule of TOPIC_RULES) {
+    if (rule.patterns.length === 0) return rule.key; // 마지막 규칙(기타)은 항상 매치되는 폴백
+    if (rule.patterns.some((re) => re.test(text))) return rule.key;
+  }
+  return 'etc';
+}
+
+function buildSourceCard(s, recommended) {
+  const card = document.createElement('div');
+  card.className = 'src-card' + (selectedSources.has(s.id) ? ' selected' : '');
+  card.innerHTML = `
+    <div class="src-head">
+      <span class="badge ${s.type}">${TYPE_LABEL[s.type] || s.type}</span>
+      ${recommended ? '<span class="badge recommend">⭐ 오늘의 추천</span>' : ''}
+      <span class="src-meta">${s.collected_at || ''}</span>
+    </div>
+    <div class="src-title"></div>
+    <div class="src-summary"></div>`;
+  card.querySelector('.src-title').textContent = s.title;
+  card.querySelector('.src-summary').textContent = s.summary || '';
+  card.addEventListener('click', () => {
+    if (selectedSources.has(s.id)) selectedSources.delete(s.id);
+    else selectedSources.add(s.id);
+    card.classList.toggle('selected');
+    $('#btn-goto-builder').disabled = selectedSources.size === 0;
+    $('#btn-story-mode').disabled = selectedSources.size === 0;
+  });
+  return card;
+}
+
 async function loadSources() {
   const type = $('#src-type-filter').value;
   const sources = await api(`/api/sources?status=new${type ? `&type=${type}` : ''}`);
@@ -59,26 +102,23 @@ async function loadSources() {
     list.innerHTML = '<p style="color:#5c6b7a">소스가 없습니다. [지금 수집]을 누르거나 주제를 직접 입력하세요.</p>';
     return;
   }
-  for (const s of sources) {
-    const card = document.createElement('div');
-    card.className = 'src-card' + (selectedSources.has(s.id) ? ' selected' : '');
-    card.innerHTML = `
-      <div class="src-head">
-        <span class="badge ${s.type}">${TYPE_LABEL[s.type] || s.type}</span>
-        <span class="src-meta">${s.collected_at || ''}</span>
-      </div>
-      <div class="src-title"></div>
-      <div class="src-summary"></div>`;
-    card.querySelector('.src-title').textContent = s.title;
-    card.querySelector('.src-summary').textContent = s.summary || '';
-    card.addEventListener('click', () => {
-      if (selectedSources.has(s.id)) selectedSources.delete(s.id);
-      else selectedSources.add(s.id);
-      card.classList.toggle('selected');
-      $('#btn-goto-builder').disabled = selectedSources.size === 0;
-      $('#btn-story-mode').disabled = selectedSources.size === 0;
-    });
-    list.appendChild(card);
+
+  // 서버가 이미 collected_at DESC로 정렬해 보내므로, 그룹핑 후에도 카테고리 안의 순서는
+  // 최신순을 유지한다 — 그래서 각 그룹의 앞쪽 2개가 곧 "최신 2개"다.
+  const groups = new Map(TOPIC_RULES.map((r) => [r.key, []]));
+  for (const s of sources) groups.get(classifySource(s)).push(s);
+
+  for (const rule of TOPIC_RULES) {
+    const items = groups.get(rule.key);
+    if (!items.length) continue;
+    const section = document.createElement('div');
+    section.className = 'source-group';
+    section.innerHTML = `<h3 class="source-group-title">${rule.label}</h3>`;
+    const grid = document.createElement('div');
+    grid.className = 'card-grid';
+    items.forEach((s, i) => grid.appendChild(buildSourceCard(s, i < 2)));
+    section.appendChild(grid);
+    list.appendChild(section);
   }
 }
 
