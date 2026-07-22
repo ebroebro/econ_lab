@@ -249,11 +249,14 @@ export function createServer(db, deps = {}) {
       catch (e) { result.instagram = { error: e.message }; }
     }
     if (!alreadyThreads) {
-      try {
-        const threadsInput = d.content.threadsPosts?.length ? d.content.threadsPosts : d.content.threadsText;
-        result.threads = await publishThreads({ text: threadsInput, imageUrl: urls[0] });
+      const threadsInput = d.content.threadsPosts?.length ? d.content.threadsPosts : d.content.threadsText;
+      const hasThreadsText = Array.isArray(threadsInput) ? threadsInput.length > 0 : Boolean(threadsInput?.trim());
+      if (hasThreadsText) {
+        try { result.threads = await publishThreads({ text: threadsInput, imageUrl: urls[0] }); }
+        catch (e) { result.threads = { error: e.message }; }
+      } else {
+        result.threads = { error: 'Threads 글이 비어 있습니다' };
       }
-      catch (e) { result.threads = { error: e.message }; }
     }
 
     const anyOk = result.instagram?.permalink || result.threads?.permalink;
