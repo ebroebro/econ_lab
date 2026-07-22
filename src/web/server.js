@@ -249,7 +249,10 @@ export function createServer(db, deps = {}) {
       catch (e) { result.instagram = { error: e.message }; }
     }
     if (!alreadyThreads) {
-      try { result.threads = await publishThreads({ text: d.content.threadsText, imageUrl: urls[0] }); }
+      try {
+        const threadsInput = d.content.threadsPosts?.length ? d.content.threadsPosts : d.content.threadsText;
+        result.threads = await publishThreads({ text: threadsInput, imageUrl: urls[0] });
+      }
       catch (e) { result.threads = { error: e.message }; }
     }
 

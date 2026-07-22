@@ -375,3 +375,61 @@ test('publish-tistory — 블로그 본문 없으면 400', async () => {
     assert.equal(r.status, 400);
   } finally { srvF.close(); }
 });
+
+test('publish — threadsPosts 배열이 있으면 배열 그대로 publishThreads에 전달한다', async () => {
+  const dbG = openDb(':memory:');
+  let receivedText = null;
+  const appG = createServer(dbG, {
+    generateContent: async () => ({
+      caption: 'c',
+      cards: [{ template: 'cover', title: 't', body: '' }],
+      threadsPosts: ['첫 글', '둘째 글'],
+    }),
+    generateCardImage: async () => null,
+    renderCards: async (draftId, cards) => cards.map((_, i) => `data/images/${draftId}/card-${i + 1}.png`),
+    uploadImages: async (paths) => paths.map((_, i) => `https://cdn/x${i}.png`),
+    publishInstagram: async () => ({ id: 'ig1', permalink: 'https://instagram.com/p/x' }),
+    publishThreads: async ({ text }) => { receivedText = text; return { id: 'th1', permalink: 'https://threads.net/p/x' }; },
+  });
+  const srvG = appG.listen(0);
+  try {
+    const baseG = `http://127.0.0.1:${srvG.address().port}`;
+    const sid = dbG.insertSource({ type: 'manual', title: 't', url: null, summary: '', data: null });
+    let r = await fetch(baseG + '/api/drafts', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ sourceIds: [sid] }) });
+    const draft = await r.json();
+    r = await fetch(baseG + `/api/drafts/${draft.id}/images`, { method: 'POST' });
+    await r.json();
+    r = await fetch(baseG + `/api/drafts/${draft.id}/publish`, { method: 'POST' });
+    assert.equal(r.status, 200);
+    assert.deepEqual(receivedText, ['첫 글', '둘째 글']);
+  } finally { srvG.close(); }
+});
+
+test('publish — threadsPosts 없으면 기존 threadsText 문자열을 그대로 전달한다(하위 호환)', async () => {
+  const dbH = openDb(':memory:');
+  let receivedText = null;
+  const appH = createServer(dbH, {
+    generateContent: async () => ({
+      caption: 'c',
+      cards: [{ template: 'cover', title: 't', body: '' }],
+      threadsText: '레거시 글',
+    }),
+    generateCardImage: async () => null,
+    renderCards: async (draftId, cards) => cards.map((_, i) => `data/images/${draftId}/card-${i + 1}.png`),
+    uploadImages: async (paths) => paths.map((_, i) => `https://cdn/x${i}.png`),
+    publishInstagram: async () => ({ id: 'ig1', permalink: 'https://instagram.com/p/x' }),
+    publishThreads: async ({ text }) => { receivedText = text; return { id: 'th1', permalink: 'https://threads.net/p/x' }; },
+  });
+  const srvH = appH.listen(0);
+  try {
+    const baseH = `http://127.0.0.1:${srvH.address().port}`;
+    const sid = dbH.insertSource({ type: 'manual', title: 't', url: null, summary: '', data: null });
+    let r = await fetch(baseH + '/api/drafts', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ sourceIds: [sid] }) });
+    const draft = await r.json();
+    r = await fetch(baseH + `/api/drafts/${draft.id}/images`, { method: 'POST' });
+    await r.json();
+    r = await fetch(baseH + `/api/drafts/${draft.id}/publish`, { method: 'POST' });
+    assert.equal(r.status, 200);
+    assert.equal(receivedText, '레거시 글');
+  } finally { srvH.close(); }
+});
