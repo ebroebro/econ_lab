@@ -19,7 +19,7 @@ export function buildPrompt(sources, cardTypes = null) {
   ).join('\n\n');
 
   const cardInstruction = (cardTypes && cardTypes.length)
-    ? `cards는 정확히 ${cardTypes.length}장이며, 순서와 타입은 반드시 다음과 같아야 한다: ${cardTypes.join(' → ')}.
+    ? `cards는 최대 ${cardTypes.length}장이며, 순서와 타입은 다음과 같다: ${cardTypes.join(' → ')}. 단, 소스 내용이 부족해 같은 내용을 다른 표현으로 반복하게 될 것 같으면 뒤쪽 카드부터 생략해 개수를 줄인다(무리하게 채우지 않는다).
 각 카드의 출력 형식:
 ${cardTypes.map((t, i) => `${i + 1}번 카드 (${t}): ${TYPE_SPEC[t] || TYPE_SPEC.text}`).join('\n')}`
     : `cards는 내용에 필요한 만큼만 만든다(보통 1~4장, 정보가 짧으면 1장도 충분하다 — 억지로 늘리지 않는다). 수치·순위 데이터가 있으면 "data"나 "table"을, 추이가 있으면 "chart"를 적극 사용한다. 표지("cover")는 선택이며 본문 카드 하나로 헤드라인+표까지 다 담아도 된다.`;

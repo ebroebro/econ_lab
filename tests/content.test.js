@@ -38,7 +38,7 @@ test('cardTypes가 주어지면 프롬프트에 타입별 스펙이 들어간다
     [{ type: 'news', title: '금리 동결', summary: '한은…', data: null }],
     ['cover', 'chart', 'table', 'outro']
   );
-  assert.ok(p.includes('정확히 4장'));
+  assert.ok(p.includes('최대 4장'));
   assert.ok(p.includes('cover → chart → table → outro'));
   assert.ok(p.includes('"chartType"'));
   assert.ok(p.includes('"rows"'));
