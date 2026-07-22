@@ -377,7 +377,8 @@ function renderDraftDetail() {
   wrap.innerHTML = '';
   (d.content?.cards || []).forEach((c, i) => wrap.appendChild(buildCardEditor(c, i)));
   $('#ed-caption').value = d.content?.caption || '';
-  $('#ed-threads').value = d.content?.threadsText || '';
+  const threadsPosts = d.content?.threadsPosts?.length ? d.content.threadsPosts : (d.content?.threadsText ? [d.content.threadsText] : []);
+  ['#ed-thread-1', '#ed-thread-2', '#ed-thread-3', '#ed-thread-4'].forEach((sel, i) => { $(sel).value = threadsPosts[i] || ''; });
   $('#ed-blog-title').value = d.content?.blogTitle || '';
   $('#ed-blog-body').value = d.content?.blogBody || '';
   $('#btn-publish').disabled = d.status !== 'images_ready';
@@ -434,7 +435,7 @@ function collectEditedContent() {
   return {
     ...currentDraft.content,
     caption: $('#ed-caption').value,
-    threadsText: $('#ed-threads').value,
+    threadsPosts: ['#ed-thread-1', '#ed-thread-2', '#ed-thread-3', '#ed-thread-4'].map((sel) => $(sel).value.trim()).filter(Boolean),
     blogTitle: $('#ed-blog-title').value,
     blogBody: $('#ed-blog-body').value,
   };

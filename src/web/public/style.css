@@ -87,6 +87,7 @@ a { color: #1d9bf0; }
 #naver-result { margin: 10px 0; color: #9fb0c0; line-height: 1.7; white-space: pre-wrap; }
 #tistory-result { margin: 10px 0; color: #9fb0c0; line-height: 1.7; white-space: pre-wrap; }
 #ed-blog-title, #ed-blog-body { margin-top: 8px; }
+#ed-thread-1, #ed-thread-2, #ed-thread-3, #ed-thread-4 { margin-top: 6px; }
 #toast {
   position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
   background: #1d9bf0; color: #fff; padding: 12px 24px; border-radius: 10px;
