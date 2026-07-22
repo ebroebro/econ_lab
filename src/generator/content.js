@@ -43,11 +43,11 @@ ${srcText}
 - ${cardInstruction}
 - title은 20자 이내. 쉬운 한국어.
 - chart/table 타입인데 소스에 활용할 수치·순위 데이터가 없으면 labels/values 또는 columns/rows를 빈 배열로 둔다.
-- caption: 인스타 캐프션 300자 이내 + 해시태그 8~12개.
-- threadsText: 200자 이내, 핵심 요약 + "자세한 카드뉴스는 인스타그램에서 확인" 유도 문구 (계정명 없이).
+- caption: 100만 팔로워를 가진 인플루언서가 팔로워에게 직접 꿀팁을 알려주듯, 첫 문장부터 눈길을 끄는 후킹(질문·놀라운 숫자·공감 포인트)으로 시작해 친근하고 임팩트 있게 쓴다(이모지 적절히 포함). 다만 투자 조언·과장된 단정 표현은 쓰지 않는다(꿀팁이지 투자 권유가 아니다). 300자 이내 + 해시태그 8~12개.
+- threadsPosts: 인플루언서가 팔로워에게 말 걸듯 반말로 캐주얼하고 임팩트 있게 쓴 연속된 글 2~4개(소스가 얇으면 2개, 풍부하면 4개까지 — 억지로 늘리지 않는다). 1번째 글은 후킹(질문·놀라운 숫자·공감 포인트)으로 시작한다. 각 글은 200자 이내. 투자 조언은 하지 않는다. 마지막 글에만 "자세한 카드뉴스는 인스타그램에서 확인" 유도 문구를 넣는다(계정명 없이).
 
 출력 형식(JSON만, 다른 텍스트 금지):
-{"caption":"...","cards":[...],"threadsText":"..."}`;
+{"caption":"...","cards":[...],"threadsPosts":["...","...","..."]}`;
 }
 
 function normalizeTag(tag) {
@@ -59,9 +59,13 @@ export function parseContent(text) {
   const m = text.match(/```(?:json)?\s*([\s\S]*?)```/);
   const jsonStr = (m ? m[1] : text).trim();
   const obj = JSON.parse(jsonStr);
-  if (!obj.caption || !Array.isArray(obj.cards) || obj.cards.length < 1 || !obj.threadsText) {
-    throw new Error('생성 결과에 caption/cards/threadsText가 없습니다');
+  const threadsPosts = Array.isArray(obj.threadsPosts)
+    ? obj.threadsPosts.map(String).map((s) => s.trim()).filter(Boolean).slice(0, 4)
+    : [];
+  if (!obj.caption || !Array.isArray(obj.cards) || obj.cards.length < 1 || threadsPosts.length === 0) {
+    throw new Error('생성 결과에 caption/cards/threadsPosts가 없습니다');
   }
+  obj.threadsPosts = threadsPosts;
   for (const c of obj.cards) {
     if (!VALID_TEMPLATES.includes(c.template)) c.template = 'text';
     c.title = c.title || '';
@@ -164,11 +168,11 @@ ${srcText}
 - 우리 브랜드명은 "${config.brandName}"이다. 다른 인스타그램 계정명은 언급하지 않는다.
 
 ## 출력
-- caption: 인스타 캐프션 300자 이내 + 해시태그 8~12개.
-- threadsText: 200자 이내, 핵심 요약 + "자세한 카드뉴스는 인스타그램에서 확인" 유도 문구 (계정명 없이).
+- caption: 100만 팔로워를 가진 인플루언서가 팔로워에게 직접 꿀팁을 알려주듯, 첫 문장부터 눈길을 끄는 후킹(질문·놀라운 숫자·공감 포인트)으로 시작해 친근하고 임팩트 있게 쓴다(이모지 적절히 포함). 다만 투자 조언·과장된 단정 표현은 쓰지 않는다(꿀팁이지 투자 권유가 아니다). 300자 이내 + 해시태그 8~12개.
+- threadsPosts: 인플루언서가 팔로워에게 말 걸듯 반말로 캐주얼하고 임팩트 있게 쓴 연속된 글 2~4개(소스가 얇으면 2개, 풍부하면 4개까지 — 억지로 늘리지 않는다). 1번째 글은 후킹(질문·놀라운 숫자·공감 포인트)으로 시작한다. 각 글은 200자 이내. 투자 조언은 하지 않는다. 마지막 글에만 "자세한 카드뉴스는 인스타그램에서 확인" 유도 문구를 넣는다(계정명 없이).
 
 출력 형식(JSON만, 다른 텍스트 금지):
-{"caption":"...","cards":[...],"threadsText":"..."}`;
+{"caption":"...","cards":[...],"threadsPosts":["...","...","..."]}`;
 }
 
 export function parseStoryContent(text) {
