@@ -54,6 +54,7 @@ details button { margin-top: 10px; }
 .badge.realestate { background: #17bf6333; color: #4be08d; }
 .badge.stock { background: #f4a52633; color: #ffc766; }
 .badge.manual { background: #794bc433; color: #b78aff; }
+.badge.subscription { background: #0d948833; color: #5eead4; }
 .badge.st-draft { background: #79544233; color: #d0a080; }
 .badge.st-text_approved { background: #1d9bf033; color: #6cc5ff; }
 .badge.st-images_ready { background: #f4a52633; color: #ffc766; }

@@ -48,7 +48,7 @@ $$('.tab').forEach(btn => btn.addEventListener('click', () => {
 }));
 
 // ---------- 소스함 ----------
-const TYPE_LABEL = { news: '뉴스', realestate: '부동산', stock: '증시', manual: '직접 입력' };
+const TYPE_LABEL = { news: '뉴스', realestate: '부동산', stock: '증시', subscription: '청약', manual: '직접 입력' };
 
 // 소스 제목+요약을 우선순위 순서로 키워드 매칭해 세분화된 주제로 묶는다. DB/서버 변경 없이
 // 화면에서만 그룹핑한다 — 더 구체적인 카테고리(청약)를 일반적인 카테고리(부동산정책)보다 먼저 검사.
@@ -162,7 +162,7 @@ $('#btn-add-manual-images').addEventListener('click', async (e) => {
   finally { busy(e.target, false); }
 });
 
-const TEMPLATE_LABEL = { cover: '표지', text: '설명', data: '수치 강조', chart: '차트', table: '순위표', outro: '마무리', manual: '직접 업로드' };
+const TEMPLATE_LABEL = { cover: '표지', text: '설명', data: '수치 강조', chart: '차트', table: '순위표', outro: '마무리', subscription: '청약정보', manual: '직접 업로드' };
 let slots = [];
 
 function renderSlots() {
@@ -349,6 +349,21 @@ function buildCardEditor(c, i) {
       <button type="button" class="row-add" data-kind="table">+ 행 추가</button>`;
     ed.querySelector('[data-f="title"]').value = c.title || '';
     renderTableRows(ed, c);
+  } else if (c.template === 'subscription') {
+    ed.innerHTML = `
+      <label>카드 ${i + 1} · ${TEMPLATE_LABEL[c.template]}</label>
+      <input data-f="title" placeholder="단지명">
+      <input data-f="region" placeholder="공급지역 (예: 서울 강남구)">
+      <input data-f="totalSupply" placeholder="총공급세대수 (예: 128세대)">
+      <input data-f="receiptStart" placeholder="청약접수 시작일">
+      <input data-f="receiptEnd" placeholder="청약접수 종료일">
+      <input data-f="winnerDate" placeholder="당첨자 발표일">`;
+    ed.querySelector('[data-f="title"]').value = c.title || '';
+    ed.querySelector('[data-f="region"]').value = c.region || '';
+    ed.querySelector('[data-f="totalSupply"]').value = c.totalSupply || '';
+    ed.querySelector('[data-f="receiptStart"]').value = c.receiptStart || '';
+    ed.querySelector('[data-f="receiptEnd"]').value = c.receiptEnd || '';
+    ed.querySelector('[data-f="winnerDate"]').value = c.winnerDate || '';
   } else {
     ed.innerHTML = `
       <label>카드 ${i + 1} · ${TEMPLATE_LABEL[c.template] || c.template}</label>
