@@ -99,6 +99,22 @@ test('table 카드는 columns가 있으면 헤더 있는 그리드 표를 렌더
   assert.ok(html.includes('<td>5.9억</td>'));
 });
 
+test('subscription 카드는 지역·총세대수·접수기간·발표일을 렌더링한다', () => {
+  const html = renderCardHtml(
+    {
+      template: 'subscription', title: '남양주왕숙 A-24블록', region: '경기', totalSupply: '390세대',
+      receiptStart: '2025.12.08', receiptEnd: '2025.12.12', winnerDate: '2025.12.24',
+    },
+    { seq: 1, total: 1 }
+  );
+  assert.ok(html.includes('남양주왕숙 A-24블록'));
+  assert.ok(html.includes('경기'));
+  assert.ok(html.includes('390세대'));
+  assert.ok(html.includes('2025.12.08'));
+  assert.ok(html.includes('2025.12.12'));
+  assert.ok(html.includes('2025.12.24'));
+});
+
 test('text 카드에 icon이 있으면 svg가 포함된다', () => {
   const html = renderCardHtml(
     { template: 'text', title: '금리 인상', body: '설명', icon: 'trend-up' },

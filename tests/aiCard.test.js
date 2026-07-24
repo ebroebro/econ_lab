@@ -57,6 +57,18 @@ test('data 카드 프롬프트에 강조 숫자와 색상이 들어간다', () =
   assert.ok(p.includes('red number'));
 });
 
+test('subscription 카드 프롬프트에 지역·총세대수·접수기간·발표일이 들어간다', () => {
+  const p = buildCardImagePrompt({
+    template: 'subscription', title: '남양주왕숙 A-24블록', region: '경기', totalSupply: '390세대',
+    receiptStart: '2025.12.08', receiptEnd: '2025.12.12', winnerDate: '2025.12.24',
+  });
+  assert.ok(p.includes('남양주왕숙 A-24블록'));
+  assert.ok(p.includes('경기'));
+  assert.ok(p.includes('390세대'));
+  assert.ok(p.includes('2025.12.08'));
+  assert.ok(p.includes('2025.12.24'));
+});
+
 test('text 카드에 steps가 있으면 플로우차트 지시가 들어가고 role 일러스트는 빠진다', () => {
   const p = buildCardImagePrompt({
     template: 'text', title: '왜 급락했나', body: '부연 설명', role: 'cause',

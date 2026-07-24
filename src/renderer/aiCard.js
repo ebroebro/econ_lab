@@ -86,6 +86,12 @@ export function buildCardImagePrompt(card, { brand = 'ECON LAB', seq = 1, total 
       const rows = card.rows.map((r) => `${r.label}: ${r.value}`).join(', ');
       parts.push(`Below that, a simple borderless list of label/value pairs: ${rows}.`);
     }
+  } else if (card.template === 'subscription') {
+    parts.push(headlineLine(card.title));
+    if (card.region) parts.push(`Small gray text below the headline: "${card.region}"`);
+    parts.push(`Below that, a very large bold black number/text as the hero stat: "${card.totalSupply}". Exact digits, no rounding.`);
+    const rows = `청약접수: ${card.receiptStart || ''} ~ ${card.receiptEnd || ''}, 당첨자발표: ${card.winnerDate || ''}`;
+    parts.push(`Below that, a simple borderless list of label/value pairs: ${rows}.`);
   } else if (card.template === 'cover') {
     if (card.meta) parts.push(`Small gray text above the headline: "${card.meta}"`);
     parts.push(headlineLine(card.title, { size: 'very large, top third of the image' }));

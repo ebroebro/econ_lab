@@ -211,6 +211,15 @@ export function renderCardHtml(card, { seq, total, brand = 'ECON LAB', chartLibJ
     inner = `${tag}${renderChartInner(card)}`;
   } else if (card.template === 'table') {
     inner = `${tag}${renderTableInner(card)}`;
+  } else if (card.template === 'subscription') {
+    const rows = [
+      { label: '청약접수', value: `${card.receiptStart || ''} ~ ${card.receiptEnd || ''}` },
+      { label: '당첨자발표', value: card.winnerDate || '' },
+    ].map(r => `<div class="mini-row"><span class="label">${esc(r.label)}</span><span class="value">${esc(r.value)}</span></div>`).join('');
+    inner = `${tag}<h2>${esc(card.title)}</h2>
+      ${card.region ? `<div class="meta">${esc(card.region)}</div>` : ''}
+      <div class="big-stat black">${esc(card.totalSupply || '')}</div>
+      <div class="mini-rows">${rows}</div>`;
   } else {
     const bullets = (card.bullets || []).map(b =>
       `<div class="bullet-item"><span class="bullet-icon">★</span><span>${esc(b)}</span></div>`
