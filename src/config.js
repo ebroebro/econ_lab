@@ -22,6 +22,7 @@ export const config = {
   geminiTextModel: process.env.GEMINI_TEXT_MODEL || 'gemini-3.5-flash',
   geminiImageModel: process.env.GEMINI_IMAGE_MODEL || 'gemini-3.1-flash-image',
   ecosApiKey: process.env.ECOS_API_KEY || '',
+  dataGoKrApiKey: process.env.DATA_GO_KR_API_KEY || '',
   cloudinary: {
     cloudName: process.env.CLOUDINARY_CLOUD_NAME || '',
     apiKey: process.env.CLOUDINARY_API_KEY || '',
