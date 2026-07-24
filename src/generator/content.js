@@ -1,7 +1,7 @@
 import { generateText } from './gemini.js';
 import { config } from '../config.js';
 
-const VALID_TEMPLATES = ['cover', 'text', 'data', 'chart', 'table', 'outro'];
+const VALID_TEMPLATES = ['cover', 'text', 'data', 'chart', 'table', 'outro', 'subscription'];
 const TAG_COLORS = ['blue', 'red'];
 
 const TYPE_SPEC = {
@@ -11,6 +11,7 @@ const TYPE_SPEC = {
   chart: '{"template":"chart","title":"(20자 이내)","chartType":"line 또는 bar","labels":["항목1","항목2"],"values":[숫자,숫자],"unit":"(단위, 예: %)","tag":null,"source":""}',
   table: '{"template":"table","title":"(20자 이내)","columns":["열 이름1","열 이름2","열 이름3"],"rows":[["셀","셀","셀"],["셀","셀","셀"]],"tag":null,"source":"(출처)"}',
   outro: '{"template":"outro","title":"(팔로우 유도, 20자 이내)","body":"(80자 이내)","tag":null}',
+  subscription: '{"template":"subscription","title":"(단지명, 20자 이내)","region":"(공급지역, 예: 서울 강남구)","totalSupply":"(총공급세대수, 예: 128세대)","receiptStart":"(청약접수 시작일, YYYY.MM.DD)","receiptEnd":"(청약접수 종료일, YYYY.MM.DD)","winnerDate":"(당첨자 발표일, YYYY.MM.DD)","tag":{"text":"청약정보","color":"blue"},"source":"(출처, 예: * 출처: 청약홈)"}',
 };
 
 export function buildPrompt(sources, cardTypes = null) {
@@ -33,6 +34,7 @@ ${cardTypes.map((t, i) => `${i + 1}번 카드 (${t}): ${TYPE_SPEC[t] || TYPE_SPE
 - 비교·순위·항목이 3개 이상이면 "table"에 columns를 채워 표로 정리한다. 단순 강조 수치 하나면 "data"를 쓴다.
 - tag는 이 카드의 성격을 한 단어로 압축한 라벨이다(예: "긴급속보", "청약정보", "금리동향"). 애매하면 null로 둔다.
 - 절대 과장하거나 확정되지 않은 걸 단정하지 않는다. 정보 전달 톤. 투자 조언·매수/매도 권유 금지.
+- 소스가 청약/분양 공고(단지명·접수기간·당첨자발표일 등 정보)라면 "subscription" 템플릿을 쓴다.
 
 아래 소스를 바탕으로 카드뉴스 구성안을 JSON으로만 출력하라.
 우리 브랜드명은 "${config.brandName}"이다. 다른 인스타그램 계정명(@아이디)은 절대 언급하지 마라.
@@ -115,6 +117,12 @@ export function parseContent(text) {
     } else if (c.template === 'cover') {
       c.body = c.body || '';
       c.meta = c.meta ? String(c.meta) : '';
+    } else if (c.template === 'subscription') {
+      c.region = c.region ? String(c.region) : '';
+      c.totalSupply = c.totalSupply ? String(c.totalSupply) : '';
+      c.receiptStart = c.receiptStart ? String(c.receiptStart) : '';
+      c.receiptEnd = c.receiptEnd ? String(c.receiptEnd) : '';
+      c.winnerDate = c.winnerDate ? String(c.winnerDate) : '';
     } else {
       c.body = c.body || '';
     }

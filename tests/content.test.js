@@ -18,6 +18,24 @@ test('buildPrompt에 소스 제목과 규칙이 들어간다', () => {
   assert.ok(p.includes('투자 조언'));
 });
 
+test('buildPrompt에 subscription 템플릿 사용 안내가 들어간다', () => {
+  const p = buildPrompt([{ type: 'subscription', title: '청약 공고', summary: '경기 · 총 390세대', data: null }]);
+  assert.ok(p.includes('subscription'));
+  assert.ok(p.includes('청약'));
+});
+
+test('cardTypes에 subscription이 있으면 프롬프트에 전용 필드 스펙이 들어간다', () => {
+  const p = buildPrompt(
+    [{ type: 'subscription', title: '청약 공고', summary: '', data: null }],
+    ['subscription'],
+  );
+  assert.ok(p.includes('"region"'));
+  assert.ok(p.includes('"totalSupply"'));
+  assert.ok(p.includes('"receiptStart"'));
+  assert.ok(p.includes('"receiptEnd"'));
+  assert.ok(p.includes('"winnerDate"'));
+});
+
 test('buildPrompt에 threadsPosts 지시문(반말·2~4개·마지막 글 유도문구)이 들어간다', () => {
   const p = buildPrompt([{ type: 'news', title: '금리 동결', summary: '한은…', data: null }]);
   assert.ok(p.includes('threadsPosts'));
@@ -99,6 +117,32 @@ test('parseContent가 table 카드에 rows가 없으면 빈 배열로 채운다'
   const raw = JSON.stringify({ caption: 'c', threadsPosts: ['t'], cards: [{ template: 'table', title: '순위' }] });
   const c = parseContent(raw);
   assert.deepEqual(c.cards[0].rows, []);
+});
+
+test('parseContent가 subscription 카드 필드 기본값을 채운다', () => {
+  const raw = JSON.stringify({
+    caption: 'c', threadsPosts: ['t'],
+    cards: [{ template: 'subscription', title: '남양주왕숙 A-24블록' }],
+  });
+  const c = parseContent(raw);
+  assert.equal(c.cards[0].region, '');
+  assert.equal(c.cards[0].totalSupply, '');
+  assert.equal(c.cards[0].receiptStart, '');
+  assert.equal(c.cards[0].receiptEnd, '');
+  assert.equal(c.cards[0].winnerDate, '');
+});
+
+test('parseContent가 subscription 카드 필드 값을 그대로 유지한다', () => {
+  const raw = JSON.stringify({
+    caption: 'c', threadsPosts: ['t'],
+    cards: [{
+      template: 'subscription', title: '남양주왕숙 A-24블록', region: '경기', totalSupply: '390세대',
+      receiptStart: '2025.12.08', receiptEnd: '2025.12.12', winnerDate: '2025.12.24',
+    }],
+  });
+  const c = parseContent(raw);
+  assert.equal(c.cards[0].region, '경기');
+  assert.equal(c.cards[0].totalSupply, '390세대');
 });
 
 test('buildStoryPrompt에 STEP1/STEP2 공식과 role 목록이 들어간다', () => {
